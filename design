@@ -1,0 +1,8 @@
+cdpc systemd 服务依赖于nodejs
+
+cdpc systemd服务运行后，要在/tmp目录创建cdpc_systemd_info 目录，其中包括以下内容：
+    systemd_name
+    webserver_info
+
+
+
