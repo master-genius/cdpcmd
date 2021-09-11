@@ -4,5 +4,13 @@ cdpc systemd服务运行后，要在/tmp目录创建cdpc_systemd_info 目录，�
     systemd_name
     webserver_info
 
+webserver 实现功能：
+    提供获取负载信息的接口
+    主动汇报
+    提交任务用于编排部署
+    提交代码动态执行
+    更新验证密钥
+    
+
 
 
