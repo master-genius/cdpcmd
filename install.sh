@@ -9,6 +9,53 @@ if [ ! -d "./tmp" ] ; then
     mkdir tmp
 fi
 
+#安装软件所在路径
+CDPC_DIR=/usr/local/cdpc
+
+#安装命令所在路径
+CDPC_CMD_DIR=/usr/local/bin/cdpc
+
+SYSTEMD_FILE=cdpcd.service
+
+SYSTEMD_PATH=/lib/systemd/system
+
+INSTALL_LIST="cdpc install.sh webserver makesystemd.js node_modules package.json package-lock.json"
+
+install_cdpc () {
+    
+    cd $SELFDIR
+
+    if [ ! -d "$CDPC_DIR" ] ; then
+        sudo mkdir -p $CDPC_DIR
+    fi
+
+    sudo cp -R $INSTALL_LIST $CDPC_DIR
+
+    if [ ! -d "$CDPC_DIR/config" ] ; then
+        sudo mkdir "$CDPC_DIR/config"
+    fi
+
+    sudo cp cdpc $CDPC_CMD_DIR
+
+    node makesystemd.js > tmp/$SYSTEMD_FILE
+
+    sudo cp $SYSTEMD_FILE $SYSTEMD_PATH && \
+    sudo systemctl enable $SYSTEMD_FILE && \
+    sudo systemctl start $SYSTEMD_FILE
+}
+
+if [ "$#" -gt 0 ] ; then
+    for a in $@ ; do
+        
+        if [ "$a" = "-u" ] ; then
+            install_cdpc
+            exit $?
+        fi
+
+    done
+
+fi
+
 #ubuntu、debian、deepin、mint
 OSNAME="ubuntu"
 CHECK_NAME=`cat /etc/os-release | egrep '^NAME=.*CentOS|^NAME=.*RedHat'`
@@ -48,10 +95,6 @@ if ! which node ; then
 
 fi
 
-#安装软件所在路径
-CDPC_DIR=/usr/local/cdpc
-
-#安装命令所在路径
-CDPC_CMD_DIR=/usr/local/bin/cdpc
-
-
+if [ "$CDPC_DIR" != "$SELFDIR" ] ; then
+    install_cdpc
+fi

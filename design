@@ -10,7 +10,20 @@ webserver 实现功能：
     提交任务用于编排部署
     提交代码动态执行
     更新验证密钥
+    编辑配置文件
+
+cdpc命令功能：
+    start APP
+    stop  APP
+    status APP
+    restart [APP | all]
+    reload
+    webserver-start
+    webserver-stop
+    webserver-restart
+    show-config
+    set-config FILENAME
+    save-config PATH
+    systemd-start
+    systemd-restart
     
-
-
-

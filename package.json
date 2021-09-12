@@ -12,7 +12,8 @@
   "dependencies": {
     "cdpc": "^2.0.3",
     "gohttp": "^4.1.2",
-    "titbit": "^22.5.1",
+    "options-check": "^1.0.0",
+    "titbit": "^22.5.2",
     "titbit-httpc": "^2.0.1",
     "titbit-loader": "^21.4.5",
     "titbit-toolkit": "^3.0.1"

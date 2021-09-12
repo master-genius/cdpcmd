@@ -1,2 +1,72 @@
 #!/bin/bash
 
+CDPC_DIR=/usr/local/cdpc
+
+CDPC_CONFIG="$CDPC_DIR/config"
+
+CDPC_SERVER="$CDPC_DIR/webserver"
+
+CDPC_SERVER_APP="$CDPC_SERVER/app.js"
+
+ARGS=
+
+parse_args () {
+    if [ "$#" -gt 0 ] ; then
+        
+        COUNT=0
+
+        for a in $@ ; do
+            let COUNT+=1
+            if [ $COUNT -gt 1 ] ; then
+                ARGS="$ARGS $a"
+            fi
+        done
+
+    fi
+}
+
+check_args2_exit () {
+    if [ "$1" -lt $2 ] ; then
+        echo "less arguments."
+        exit 1
+    fi
+}
+
+case $1 in
+    start)
+        check_args2_exit $# 2
+        ;;
+
+    stop)
+        check_args2_exit $# 2
+        ;;
+
+    restart)
+        check_args2_exit $# 2
+        ;;
+
+    reload)
+        check_args2_exit $# 2
+        ;;
+
+    status)
+        
+        ;;
+    
+    #start stop restart
+    webserver)
+
+        ;;
+
+    #start restart
+    systemd)
+        ;;
+    
+    #show 
+    config)
+        ;;
+    
+    *)
+        help
+        ;;
+esac
