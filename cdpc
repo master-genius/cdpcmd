@@ -8,7 +8,13 @@ CDPC_SERVER="$CDPC_DIR/webserver"
 
 CDPC_SERVER_APP="$CDPC_SERVER/app.js"
 
+CDPC_WATCH=/tmp/cdpc_watch
+
 ARGS=
+
+help () {
+    echo ""
+}
 
 parse_args () {
     if [ "$#" -gt 0 ] ; then
@@ -32,21 +38,31 @@ check_args2_exit () {
     fi
 }
 
+handle_app () {
+    for a in $ARGS; do
+        echo $a > $CDPC_WATCH/$1
+    done
+}
+
 case $1 in
     start)
         check_args2_exit $# 2
+        handle_app start
         ;;
 
     stop)
         check_args2_exit $# 2
+        handle_app stop
         ;;
 
     restart)
         check_args2_exit $# 2
+        handle_app restart
         ;;
 
     reload)
         check_args2_exit $# 2
+        date > $CDPC_WATCH/reload
         ;;
 
     status)
