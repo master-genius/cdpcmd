@@ -41,6 +41,7 @@ check_args2_exit () {
 handle_app () {
     for a in $ARGS; do
         echo $a > $CDPC_WATCH/$1
+        sleep 0.05
     done
 }
 

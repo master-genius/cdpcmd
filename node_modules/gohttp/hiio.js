@@ -366,6 +366,8 @@ class _Request {
           }, this.reconnDelay)
         })
 
+        if (this.connected) return
+
         this.debug && console.log('Connect closed, reconnect...')
         this.reconn()
       } else {

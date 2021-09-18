@@ -3,8 +3,11 @@
 //const crypto = require('crypto');
 const fs = require('fs');
 
+const fsp = fs.promises;
+
 var bodymaker = function (options = {}) {
-  if (!(this instanceof bodymaker)) {return new bodymaker(options);}
+
+  if (!(this instanceof bodymaker)) return new bodymaker(options);
 
   //最大同时上传文件数量限制
   this.maxUploadLimit = 10;
@@ -73,7 +76,7 @@ var bodymaker = function (options = {}) {
 };
 
 bodymaker.prototype.fmtName = function (name) {
-  return name.replace(/"/g, '\\"');
+  return name.replace(/"/g, '%22');
 };
 
 bodymaker.prototype.fmtFilename = function (name) {
@@ -84,13 +87,14 @@ bodymaker.prototype.fmtFilename = function (name) {
     }
   }
 
-  return name.replace(/"/g, '\\"');
+  return name.replace(/"/g, '%22');
 }
 
 bodymaker.prototype.makeUploadData = async function (r) {
-  var bdy = this.boundary();
+  let bdy = this.boundary();
 
-  var formData = '';
+  let formData = '';
+
   if (r.form !== undefined) {
     if (typeof r.form === 'object') {
       for (let k in r.form) {
@@ -100,13 +104,13 @@ bodymaker.prototype.makeUploadData = async function (r) {
     }
   }
 
-  var bodyfi = {};
-  var header_data = '';
-  var payload = '';
+  let bodyfi = {};
+  let header_data = '';
+  let payload = '';
 
-  var content_length = Buffer.byteLength(formData);
+  let content_length = Buffer.byteLength(formData);
 
-  var end_data = `\r\n--${bdy}--\r\n`;
+  let end_data = `\r\n--${bdy}--\r\n`;
 
   content_length += Buffer.byteLength(end_data);
 
@@ -119,9 +123,8 @@ bodymaker.prototype.makeUploadData = async function (r) {
         t = r.files[k];
       }
       let fst = null;
-      let name;
-      let filename;
-      for (let i=0; i<t.length; i++) {
+      
+      for (let i=0; i < t.length; i++) {
         header_data = `Content-Disposition: form-data; `
             + `name=${'"'}${this.fmtName(k)}${'"'}; `
             + `filename=${'"'}${this.fmtFilename(t[i])}${'"'}`
@@ -148,16 +151,24 @@ bodymaker.prototype.makeUploadData = async function (r) {
 
   }
 
-  var seek = 0;
-  var bodyData = Buffer.alloc(content_length);
+  let seek = 0;
+  let bodyData = Buffer.alloc(content_length);
   seek = Buffer.from(formData).copy(bodyData);
 
-  let fd = -1;
+  //let fd = -1;
+  let fh = null;
+  let fret;
+
   for(let f in bodyfi) {
     seek += Buffer.from(bodyfi[f].payload).copy(bodyData, seek);
     try {
-      fd = fs.openSync(f);
-      await new Promise((rv, rj) => {
+      fh = await fsp.open(f);
+
+      fret = await fh.read(bodyData, seek, bodyfi[f].length, 0)
+
+      seek += fret.bytesRead;
+
+      /* await new Promise((rv, rj) => {
         fs.read(fd, bodyData, seek, bodyfi[f].length, 0, (err, bytesRead, buffer) => {
           if (err) {
             rj(err);
@@ -166,13 +177,14 @@ bodymaker.prototype.makeUploadData = async function (r) {
             rv(bytesRead);
           }
         });
-      });
+      }); */
     } catch (err) {
       throw err;
     } finally {
-      if (fd > 0) {
+      fh && fh.close && fh.close();
+      /* if (fd > 0) {
         fs.close(fd, err => {});
-      }
+      } */
     }
   }
   
@@ -186,9 +198,6 @@ bodymaker.prototype.makeUploadData = async function (r) {
 };
 
 bodymaker.prototype.boundary = function() {
-  //var hash = crypto.createHash('md5');
-  //hash.update(`${Date.now()}-${Math.random()}`);
-  //var bdy = hash.digest('hex');
 
   let bdy = `${Date.now()}${parseInt(Math.random() * 10000)+10001}`;
 
