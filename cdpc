@@ -10,7 +10,7 @@ CDPC_SERVER_APP="$CDPC_SERVER/app.js"
 
 CDPC_WATCH=/tmp/cdpc_watch
 
-ARGS=
+ARGS=''
 
 help () {
     echo ""
@@ -41,7 +41,7 @@ check_args2_exit () {
 handle_app () {
     for a in $ARGS; do
         echo $a > $CDPC_WATCH/$1
-        sleep 0.05
+        sleep 0.1
     done
 }
 

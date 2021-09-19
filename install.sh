@@ -35,6 +35,15 @@ install_cdpc () {
         sudo mkdir "$CDPC_DIR/config"
     fi
 
+    if [ ! -d "$CDPC_DIR/webserver/config" ] ; then
+        sudo mkdir "$CDPC_DIR/webserver/config"
+    fi
+
+    if [ ! -f "$CDPC_DIR/webserver/config/apitk" ] ; then
+        node ./mktk.js > tmp/apitk
+        sudo mv tmp/apitk "$CDPC_DIR/webserver/config/"
+    fi
+
     sudo cp cdpc $CDPC_CMD_DIR
 
     node makesystemd.js > tmp/$SYSTEMD_FILE

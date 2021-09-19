@@ -25,7 +25,8 @@ cm.runChilds([
         file: 'webserver/app.js',
         restart: 'always',
         restartDelay: 500,
-        monitor: true
+        monitor: true,
+        lockReload: true
     }
 ])
 

@@ -1,0 +1,34 @@
+'use strict'
+
+/**
+ * 务必给每个都设定default，保证最后参数解析一定会返回args。
+ */
+
+let host_preg = '(^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$)|'
+              + '(^http[s]?\:\/\/.+)|(.*\.sock$)|'
+              + '(^[0-9a-f]{1,4}:([0-9a-f]{1,4}:){1,6}[0-9a-f]{1,4}$)|'
+              + '(^::[0-9a-f]{1,4}$)|'
+              + '(^[0-9a-f]{1,4}:([0-9a-f]{1,4}:){0,6}):[0-9a-f]{0,4}$'
+
+module.exports = {
+
+  '--test' : {
+    name: test,
+    type: 'bool',
+    default: false,
+  },
+
+  '--debug' : {
+    name : 'debug',
+    default: false,
+  },
+
+  '--host' : {
+    name: 'host',
+    type: 'string',
+    match : new RegExp(host_preg, 'i'),
+    default: '0.0.0.0'
+  },
+
+
+}
