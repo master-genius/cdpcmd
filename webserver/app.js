@@ -17,6 +17,12 @@ const app = new titbit({
   maxIPRequest: 10
 })
 
+app.addService('appDir', __dirname)
+
+app.addService('configDir', __dirname + '/../config')
+
+app.addService('serverConfigDir', __dirname + '/config')
+
 let tb = new tbloader()
 
 tb.init(app)

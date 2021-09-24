@@ -30,5 +30,4 @@ module.exports = {
     default: '0.0.0.0'
   },
 
-
 }
