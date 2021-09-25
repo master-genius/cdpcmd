@@ -9,12 +9,11 @@ const argsOptions = require('./args')
 
 let { args } = parseArgv(argsOptions)
 
-
 const app = new titbit({
   debug: args.debug,
   useLimit: true,
-  maxConn: 100,
-  maxIPRequest: 10
+  maxConn: 500,
+  maxIPRequest: 20
 })
 
 app.addService('appDir', __dirname)
