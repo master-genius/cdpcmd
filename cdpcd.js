@@ -2,7 +2,7 @@
 
 process.chdir(__dirname)
 
-const config_file = 'config/childs.js'
+const config_file = 'config/'
 
 //const fs = require('fs')
 const cdpc = require('cdpc')

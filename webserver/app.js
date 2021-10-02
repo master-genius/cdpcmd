@@ -18,9 +18,9 @@ const app = new titbit({
 
 app.addService('appDir', __dirname)
 
-app.addService('configDir', __dirname + '/../config')
+app.addService('cdpcdConfigDir', __dirname + '/../config')
 
-app.addService('serverConfigDir', __dirname + '/config')
+app.addService('configDir', __dirname + '/config')
 
 let tb = new tbloader()
 

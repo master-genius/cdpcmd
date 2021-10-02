@@ -2,16 +2,16 @@
 
 /**
 [Unit]
-Description=jiaoyuting fudaoyuan api
+Description=cdpc daemon service
 
 [Service]
-ExecStart=/usr/local/bin/node /root/jyt/app
+ExecStart=/usr/local/bin/node /usr/local/cdpc/cdpcd.js
 Restart=on-failure
 RestartSec=1
 
 [Install]
 WantedBy=multi-user.target
-Alias=jytapi.service
+Alias=cdpcd.service
 
 */
 

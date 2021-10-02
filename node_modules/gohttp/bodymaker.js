@@ -51,15 +51,21 @@ var bodymaker = function (options = {}) {
     'woff'  : 'font/woff',
     'woff2' : 'font/woff2',
     'ttc'   : 'font/ttc',
+
+    'xls'   : 'application/vnd.ms-excel',
+    'gz'    : 'application/x-gzip',
+    'zip'   : 'application/zip',
+    'pdf'   : 'application/pdf'
   };
 
   this.default_mime   = 'application/octet-stream';
 
   this.extName = function (filename = '') {
-    if (filename.length <= 0) { return ''; }
+    if (filename.length < 2) return '';
+
     let name_split = filename.split('.').filter(p => p.length > 0);
 
-    if (name_split.length < 2) { return ''; }
+    if (name_split.length < 2) return '';
     
     return name_split[name_split.length - 1];
   };
@@ -126,8 +132,8 @@ bodymaker.prototype.makeUploadData = async function (r) {
       
       for (let i=0; i < t.length; i++) {
         header_data = `Content-Disposition: form-data; `
-            + `name=${'"'}${this.fmtName(k)}${'"'}; `
-            + `filename=${'"'}${this.fmtFilename(t[i])}${'"'}`
+            + `name="${this.fmtName(k)}"; `
+            + `filename="${this.fmtFilename(t[i])}"`
             + `\r\nContent-Type: ${this.mimeType(t[i])}`;
 
         payload = `\r\n--${bdy}\r\n${header_data}\r\n\r\n`;
@@ -159,7 +165,7 @@ bodymaker.prototype.makeUploadData = async function (r) {
   let fh = null;
   let fret;
 
-  for(let f in bodyfi) {
+  for (let f in bodyfi) {
     seek += Buffer.from(bodyfi[f].payload).copy(bodyData, seek);
     try {
       fh = await fsp.open(f);
@@ -168,23 +174,10 @@ bodymaker.prototype.makeUploadData = async function (r) {
 
       seek += fret.bytesRead;
 
-      /* await new Promise((rv, rj) => {
-        fs.read(fd, bodyData, seek, bodyfi[f].length, 0, (err, bytesRead, buffer) => {
-          if (err) {
-            rj(err);
-          } else {
-            seek += bytesRead;
-            rv(bytesRead);
-          }
-        });
-      }); */
     } catch (err) {
       throw err;
     } finally {
       fh && fh.close && fh.close();
-      /* if (fd > 0) {
-        fs.close(fd, err => {});
-      } */
     }
   }
   
