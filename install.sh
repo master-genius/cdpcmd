@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "$UID" -ne 0 ] ; then
+    echo "目前cdpcmd的安装需要root用户身份，请使用sudo来执行。"
+    echo "(You need to use sudo run this command.)"
+    exit 1
+fi
+
 cd $(dirname "$0")
 
 SELFDIR=`pwd`
@@ -26,31 +32,32 @@ install_cdpc () {
     cd $SELFDIR
 
     if [ ! -d "$CDPC_DIR" ] ; then
-        sudo mkdir -p $CDPC_DIR
+        mkdir -p $CDPC_DIR
     fi
 
     sudo cp -R $INSTALL_LIST $CDPC_DIR
 
     if [ ! -d "$CDPC_DIR/config" ] ; then
-        sudo mkdir "$CDPC_DIR/config"
+        mkdir "$CDPC_DIR/config"
     fi
 
     if [ ! -d "$CDPC_DIR/webserver/config" ] ; then
-        sudo mkdir "$CDPC_DIR/webserver/config"
+        mkdir "$CDPC_DIR/webserver/config"
     fi
 
     if [ ! -f "$CDPC_DIR/webserver/config/apitk" ] ; then
         node ./mktk.js > tmp/apitk
-        sudo mv tmp/apitk "$CDPC_DIR/webserver/config/"
+        mv tmp/apitk "$CDPC_DIR/webserver/config/"
+        chmod 640 "$CDPC_DIR/webserver/config/apitk"
     fi
 
-    sudo cp cdpc $CDPC_CMD_DIR
+    cp cdpc $CDPC_CMD_DIR
 
     node makesystemd.js > tmp/$SYSTEMD_FILE
 
-    sudo cp $SYSTEMD_FILE $SYSTEMD_PATH && \
-    sudo systemctl enable $SYSTEMD_FILE && \
-    sudo systemctl start $SYSTEMD_FILE
+    mv $SYSTEMD_FILE $SYSTEMD_PATH && \
+    systemctl enable $SYSTEMD_FILE && \
+    systemctl start $SYSTEMD_FILE
 }
 
 if [ "$#" -gt 0 ] ; then
@@ -67,25 +74,36 @@ fi
 
 #ubuntu、debian、deepin、mint
 OSNAME="ubuntu"
-CHECK_NAME=`cat /etc/os-release | egrep '^NAME=.*CentOS|^NAME=.*RedHat'`
+
+CHECK_NAME=`cat /etc/os-release | egrep -i '^NAME=.*CentOS|^NAME=.*RedHat'`
 
 if [ -n "$CHECK_NAME" ] ; then
     OSNAME="centos"
 fi
 
+CHECK_NAME=`cat /etc/os-release | egrep -i '^NAME=.*Manjaro|^NAME=.*Arch'`
+
+if [ -n "$CHECK_NAME" ] ; then
+    OSNAME="arch"
+fi
+
 if [ -z `which curl` ] ; then
     if [ $OSNAME = "ubuntu" ] ; then
         sudo apt install curl -y
-    else
+    elif [ $OSNAME = "centos" ] ; then
         sudo yum install curl -y
+    else
+        pacman -Sy curl --noconfirm
     fi
 fi
 
 if [ -z `which git` ] ; then
     if [ $OSNAME = "ubuntu" ] ; then
-        sudo apt install git -y
+        apt install git -y
+    elif [ $OSNAME = "centos" ] ; then
+        yum install git -y
     else
-        sudo yum install git -y
+        pacman -Sy git --noconfirm
     fi
 fi
 
@@ -94,6 +112,11 @@ if [ "$?" -ne 0 ] ; then
 fi
 
 if ! which node ; then
+    
+    if [ -d "$TMPDIR/mno" ] ; then
+        rm -rf "$TMPDIR/mno"
+    fi
+
     cd $TMPDIR && git clone 'https://gitee.com/daoio/mno' && cd mno && bash install.sh
 
     if [ "$?" -ne 0 ] ; then

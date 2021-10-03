@@ -2,19 +2,16 @@
 
 process.chdir(__dirname)
 
-const config_file = 'config/'
+const config_path = `${__dirname}/config`
 
-//const fs = require('fs')
 const cdpc = require('cdpc')
-
-//const fsp = fs.promises
 
 const cm = new cdpc({
   notExit: true,
   loadInfoFile: '/tmp/cdpcd-load.log',
   showColor: true,
   loadInfoType: 'json',
-  config: config_file
+  config: config_path
 })
 
 cm.strong()
