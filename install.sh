@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ "$UID" -ne 0 ] ; then
-    echo "目前cdpcmd的安装需要root用户身份，请使用sudo来执行。"
-    echo "(You need to use sudo run this command.)"
+    echo "目前cdpcmd的安装需要root用户身份，请使用sudo来执行，或者su切换到root用户再次运行。"
+    echo "(You need to use sudo run $0 or su switch to root and run $0 again.)"
     exit 1
 fi
 
@@ -25,7 +25,7 @@ SYSTEMD_FILE=cdpcd.service
 
 SYSTEMD_PATH=/lib/systemd/system
 
-INSTALL_LIST="cdpc install.sh webserver makesystemd.js node_modules package.json package-lock.json"
+INSTALL_LIST="cdpc install.sh webserver node_modules package.json package-lock.json"
 
 install_cdpc () {
     
@@ -49,6 +49,16 @@ install_cdpc () {
         node ./mktk.js > tmp/apitk
         mv tmp/apitk "$CDPC_DIR/webserver/config/"
         chmod 640 "$CDPC_DIR/webserver/config/apitk"
+    fi
+
+    WEB_SERVER_CERT_PATH="$CDPC_DIR/webserver/config/cert"
+
+    if [ ! -d "$WEB_SERVER_CERT_PATH" ] ; then
+        mkdir $WEB_SERVER_CERT_PATH
+    fi
+
+    if [ -d "$SELFDIR/config/cert" ] ; then
+        cp -R "$SELFDIR/config/cert/*" "$WEB_SERVER_CERT_PATH/"
     fi
 
     cp cdpc $CDPC_CMD_DIR

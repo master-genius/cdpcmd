@@ -16,6 +16,19 @@ const cm = new cdpc({
 
 cm.strong()
 
+process.on('message', (msg, handle) => {
+  if (msg.name && msg.op) {
+      switch (msg.op) {
+        case 'restart':
+        case 'start':
+        case 'pause':
+        case 'stop':
+          cm[msg.op](msg.name);
+          break;
+      }
+  }
+});
+
 cm.runChilds([
     {
         name: 'cdpc-web-server',
@@ -23,7 +36,10 @@ cm.runChilds([
         restart: 'always',
         restartDelay: 500,
         monitor: true,
-        lockReload: true
+        lockReload: true,
+        options: {
+          stdio: ['ignore', 'ignore', 'ignore', 'ipc']
+        }
     }
 ])
 
