@@ -23,7 +23,17 @@ process.on('message', (msg, handle) => {
         case 'start':
         case 'pause':
         case 'stop':
+        case 'resume':
           cm[msg.op](msg.name);
+          break;
+
+        case 'query':
+          break;
+        
+        case 'add':
+          break;
+        
+        case 'remove':
           break;
       }
   }

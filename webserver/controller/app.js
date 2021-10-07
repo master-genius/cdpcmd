@@ -10,10 +10,23 @@ class app {
 
   }
 
+  /**
+   * 
+   * 添加新的应用，应用可以是已经存在于某一路径下的，或者是git仓库获取或者是上传。
+   * 
+   * @param {object} c 
+   */
+
   async post (c) {
 
   }
 
+  /**
+   * 
+   * 对应于应用的操作：retsrat、start、stop、pause、resume。
+   * 
+   * @param {object} c 
+   */
   async put (c) {
 
   }
