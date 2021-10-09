@@ -223,7 +223,7 @@ case $1 in
     auth)
         if [[ $# -lt 2 ]] && [[ "$UID" -gt 0 ]] ; then
             if [ ! -f "/usr/local/cdpc/uauth/$ME" ] ; then
-                echo "You are not authorized."
+                echo "!!You are not authorized."
             else
                 echo "You have be authorized."
             fi

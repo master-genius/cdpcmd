@@ -58,10 +58,15 @@ function authUser (uname) {
         
         let ucfg = {
           name : `cdpcd-${au.user}`,
+          args: ['--uid', au.uid],
           file : `${__dirname}/cdpcd.js`,
           options: {
             uid: au.uid,
-            gid: au.gid
+            gid: au.gid,
+            env : {
+              HOME: au.home,
+            },
+            stdio: ['ignore', 'ignore', 'ignore', 'ipc']
           },
           monitor: true
         };
