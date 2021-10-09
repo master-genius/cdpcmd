@@ -146,7 +146,9 @@ gohttp.prototype.request = async function (url, options = {}) {
     isPost: false
   };
 
-  if (opts.method[0] == 'P') {
+  if (opts.method[0] === 'P' || (opts.method[0] === 'D' && (opts.body || opts.rawBody) ) )
+  {
+    //只有POST、PUT、PATCH的情况会出现参数错误。
     if (opts.body === undefined && opts.rawBody === undefined) {
       throw new Error('POST/PUT must with body data, please set body or rawBody');
     }
@@ -156,6 +158,7 @@ gohttp.prototype.request = async function (url, options = {}) {
     }
 
     postState.isPost = true;
+
     switch (opts.headers['content-type']) {
       case 'application/x-www-form-urlencoded':
         postData.body = Buffer.from(qs.stringify(opts.body));
@@ -337,6 +340,7 @@ gohttp.prototype._coreDownload = function (opts, postData, postState) {
   if (opts.progress === undefined) {
     opts.progress = true;
   }
+
   return new Promise((rv, rj) => {
     var r = h.request(opts, res => {
       //res.setEncoding('binary');
@@ -443,12 +447,12 @@ gohttp.prototype.upload = async function (url, options = {}) {
     options.method = 'POST';
   }
 
-  if (options.method !== 'POST' && options.method !== 'PUT') {
-    console.error('Warning: upload must use POST or PUT method, already set to POST');
+  if (options.method[0] !== 'P' && options.method[0] !== 'D') {
+    throw new Error('必须是POST、PUT、PATCH、DELETE请求之一。');
   }
 
   if (!options.files && !options.form && !options.body && !options.rawBody) {
-    throw new Error('Error: file or form not found.');
+    throw new Error('没有请求体数据(file or form not found.)');
   }
   //没有设置body，但是存在files或form，则自动打包成request需要的格式。
   if (!options.body && !options.rawBody) {
