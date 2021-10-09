@@ -23,7 +23,7 @@ class app {
 
   /**
    * 
-   * 对应于应用的操作：retsrat、start、stop、pause、resume。
+   * 对应于应用的操作：restart、start、stop、pause、resume。
    * 
    * @param {object} c 
    */
