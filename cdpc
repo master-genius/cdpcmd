@@ -41,7 +41,9 @@ CDPC_SERVER_APP="$CDPC_SERVER/app.js"
 ARGS=''
 
 help () {
-    echo ""
+    if [ -f "$SELFDIR/helpdoc" ] ; then
+        cat "$SELFDIR/helpdoc" | less
+    fi
 }
 
 parse_args () {
