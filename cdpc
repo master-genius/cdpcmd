@@ -1,14 +1,28 @@
 #!/bin/bash
 
 CDPC_DIR=/usr/local/cdpc
+CDPC_WATCH=/tmp/cdpc_watch
+CDPC_LOADINFO=/tmp/cdpc-load.log
+
+if [ "$UID" -gt 0 ] ; then
+    CDPC_DIR="$HOME/.local/cdpc"
+    CDPC_WATCH="$HOME/.local/cdpc/watch"
+    CDPC_LOADINFO="$HOME/.local/cdpc/cdpc-load.log"
+fi
+
+if [ ! -d "$CDPC_DIR" ] ; then
+    mkdir -p "$CDPC_DIR"
+fi
 
 CDPC_CONFIG="$CDPC_DIR/config"
+
+if [ ! -d "$CDPC_CONFIG" ] ; then
+    mkdir -p $CDPC_CONFIG
+fi
 
 CDPC_SERVER="$CDPC_DIR/webserver"
 
 CDPC_SERVER_APP="$CDPC_SERVER/app.js"
-
-CDPC_WATCH=/tmp/cdpc_watch
 
 ARGS=''
 
@@ -38,11 +52,88 @@ check_args2_exit () {
     fi
 }
 
+handle_config () {
+
+    case $1 in
+        add)
+            if [ ! -f "$2" ] ; then
+                echo "$2 : file not exists"
+                exit 1
+            fi
+
+            cp "$1" "$CDPC_CONFIG/"
+            ;;
+
+        remove)
+            if [ ! -f "$CDPC_CONFIG/$2" ] ; then
+                echo "file not exists"
+                exit 1
+            fi
+            rm "$CDPC_CONFIG/$2"
+            ;;
+
+        show)
+            CFGLIST=`ls $CDPC_CONFIG/*.json $CDPC_CONFIG/*.js`
+            for c in $CFGLIST ; do
+                echo "$CDPC_CONFIG/$c:"
+                cat -n "$CDPC_CONFIG/$c"
+                echo "    "
+            done
+            ;;
+    esac
+}
+
 handle_app () {
-    for a in $ARGS; do
-        echo $a > $CDPC_WATCH/$1
-        sleep 0.1
-    done
+    case $1 in
+        start)
+            ;;
+
+        stop)
+            ;;
+
+        restart)
+            ;;
+
+        pause)
+            ;;
+        
+        resume)
+            ;;
+
+        remove)
+            ;;
+        *)
+            echo "$1 : unknow command"
+            return 1
+            ;;
+    esac
+
+    echo "$ARGS" > $CDPC_WATCH/$1
+}
+
+handle_webserver () {
+    case $1 in
+        start)
+            ;;
+
+        stop)
+            ;;
+
+        restart)
+            ;;
+
+        pause)
+            ;;
+        
+        resume)
+            ;;
+        *)
+            echo "$1 : unknow command"
+            return 1
+            ;;
+    esac
+
+    echo cdpc-web-server > $CDPC_WATCH/$1
 }
 
 case $1 in
@@ -61,6 +152,16 @@ case $1 in
         handle_app restart
         ;;
 
+    pause)
+        check_args2_exit $# 2
+        handle_app pause
+        ;;
+
+    resume)
+        check_args2_exit $# 2
+        handle_app resume
+        ;;
+
     reload)
         check_args2_exit $# 2
         date > $CDPC_WATCH/reload
@@ -72,15 +173,18 @@ case $1 in
     
     #start stop restart
     webserver)
+        check_args2_exit $# 2
+        if [ "$UID" -gt 0 ] ; then
+            echo "deny!!"
+            exit 1
+        fi
 
+        handle_webserver $2
         ;;
 
-    #start restart
-    systemd)
-        ;;
-    
-    #show 
     config)
+        check_args2_exit $# 3
+        handle_config $2 $3
         ;;
     
     *)
