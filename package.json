@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "cdpc": "^2.0.8",
-    "gohttp": "^4.1.5",
+    "cdpc": "^2.1.1",
+    "gohttp": "^4.1.6",
     "npargv": "^1.0.2",
     "options-check": "^1.0.0",
     "titbit": "^22.6.1",

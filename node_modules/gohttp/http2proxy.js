@@ -90,7 +90,7 @@ hiiproxy.prototype.fmtConfig = function (cfg, k) {
     cfg[k] = [
       { path : '/', url : cfg[k] }
     ]
-  } else if (cfg[k].toString() === '[object Object]') {
+  } else if (! (cfg[k] instanceof Array) ) {
     cfg[k] = [ cfg[k] ]
   }
 }

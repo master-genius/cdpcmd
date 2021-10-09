@@ -25,7 +25,7 @@ SYSTEMD_FILE=cdpcd.service
 
 SYSTEMD_PATH=/lib/systemd/system
 
-INSTALL_LIST="cdpc install.sh webserver node_modules package.json package-lock.json"
+INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js getuser.js"
 
 install_cdpc () {
     
@@ -65,7 +65,7 @@ install_cdpc () {
 
     node makesystemd.js > tmp/$SYSTEMD_FILE
 
-    mv $SYSTEMD_FILE $SYSTEMD_PATH && \
+    mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH && \
     systemctl enable $SYSTEMD_FILE && \
     systemctl start $SYSTEMD_FILE
 }

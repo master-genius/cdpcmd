@@ -17,8 +17,8 @@ if (euid > 0) {
 const cdpc = require('cdpc');
 
 const cm = new cdpc({
-  notExit: true,
-  loadInfoFile: loadinfo,
+  //notExit: true,
+  loadInfoFile: loadfile,
   showColor: true,
   loadInfoType: 'json',
   config: config_path,

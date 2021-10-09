@@ -11,7 +11,7 @@ module.exports = {
   '@autoDefault': true,
 
   '--test' : {
-    name: test,
+    name: 'test',
     type: 'bool',
     default: false,
   },
