@@ -81,7 +81,7 @@ handle_config () {
             ;;
 
         show)
-            CFGLIST=`ls $CDPC_CONFIG/*.json $CDPC_CONFIG/*.js`
+            CFGLIST=`ls $CDPC_CONFIG`
             for c in $CFGLIST ; do
                 echo "$CDPC_CONFIG/$c:"
                 cat -n "$CDPC_CONFIG/$c"
@@ -212,6 +212,11 @@ case $1 in
         ;;
 
     config)
+        if [[ $# -gt 1 ]] && [[ "$2" = "show" ]] ; then
+            handle_config show
+            exit 0
+        fi
+
         check_args2_exit $# 3
         handle_config $2 $3
         ;;
