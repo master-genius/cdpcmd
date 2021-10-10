@@ -17,7 +17,7 @@ if (euid > 0) {
   let local_path = `${process.env.HOME}/.local/cdpc`;
 
   config_path = `${local_path}/config`;
-  loadfile = `${local_path}/cdpc-load.log`;
+  loadfile = `${local_path}/cdpcd-load.log`;
   event_dir = `${local_path}/watch`;
   logfile = `${local_path}/cdpcd.log`;
 
@@ -121,9 +121,11 @@ if (euid === 0) {
             lockReload: true,
             options: {
               stdio: ['ignore', 'ignore', 'ignore', 'ipc']
-            }
+            },
         }
     ])
 }
 
 cm.loadConfig();
+
+cm.monitorStart();

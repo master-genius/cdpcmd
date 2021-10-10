@@ -1,23 +1,15 @@
 #!/bin/bash
 
-CURDIR=`pwd`
-
-cd `dirname $0`
-
-SELFDIR=`pwd`
-
-cd $CURDIR
-
 ME=`whoami`
 
 CDPC_DIR=/usr/local/cdpc
 CDPC_WATCH=/tmp/cdpc_watch
-CDPC_LOADINFO=/tmp/cdpc-load.log
+CDPC_LOADINFO=/tmp/cdpcd-load.log
 
 if [ "$UID" -gt 0 ] ; then
     CDPC_DIR="$HOME/.local/cdpc"
     CDPC_WATCH="$CDPC_DIR/watch"
-    CDPC_LOADINFO="$CDPC_DIR/cdpc-load.log"
+    CDPC_LOADINFO="$CDPC_DIR/cdpcd-load.log"
 fi
 
 if [ ! -d "$CDPC_DIR" ] ; then
@@ -41,8 +33,8 @@ CDPC_SERVER_APP="$CDPC_SERVER/app.js"
 ARGS=''
 
 help () {
-    if [ -f "$SELFDIR/helpdoc" ] ; then
-        cat "$SELFDIR/helpdoc" | less
+    if [ -f "/usr/local/cdpc/helpdoc" ] ; then
+        cat "/usr/local/cdpc/helpdoc" | less
     fi
 }
 
@@ -69,7 +61,6 @@ check_args2_exit () {
 }
 
 handle_config () {
-
     case $1 in
         add)
             if [ ! -f "$2" ] ; then
@@ -154,7 +145,6 @@ handle_webserver () {
 }
 
 handle_auth () {
-
     case $1 in
         add)
             ;;
@@ -170,30 +160,32 @@ handle_auth () {
     node /usr/local/cdpc/auth.js $1 $2
 }
 
+parse_args $@
+
 case $1 in
     start)
         check_args2_exit $# 2
-        handle_app start
+        handle_app start $ARGS
         ;;
 
     stop)
         check_args2_exit $# 2
-        handle_app stop
+        handle_app stop $ARGS
         ;;
 
     restart)
         check_args2_exit $# 2
-        handle_app restart
+        handle_app restart $ARGS
         ;;
 
     pause)
         check_args2_exit $# 2
-        handle_app pause
+        handle_app pause $ARGS
         ;;
 
     resume)
         check_args2_exit $# 2
-        handle_app resume
+        handle_app resume $ARGS
         ;;
 
     reload)
@@ -201,8 +193,11 @@ case $1 in
         date > $CDPC_WATCH/reload
         ;;
 
+    log)
+        ;;
+
     status)
-        
+        node /usr/local/cdpc/outstatus.js $CDPC_LOADINFO
         ;;
     
     #start stop restart

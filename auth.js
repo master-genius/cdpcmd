@@ -48,7 +48,7 @@ function authUser (uname) {
     return false
   }
   
-  let ucfgpath = `${__dirname}/config/${au.user}.json`;
+  let ucfgpath = `${__dirname}/config/${au.user}.js`;
   
   switch (op) {
   
@@ -56,25 +56,27 @@ function authUser (uname) {
       try {
         fs.writeFileSync(`./uauth/${au.user}`, au.home, {encoding: 'utf8'})
         
-        let ucfg = {
-          name : `cdpcd-${au.user}`,
-          args: ['--uid', au.uid],
-          file : `${__dirname}/cdpcd.js`,
+        let ucfg = `module.exports = {
+          name : 'cdpcd-${au.user}',
+          args: ['--uid', ${au.uid}],
+          file : '${__dirname}/cdpcd.js',
           options: {
-            uid: au.uid,
-            gid: au.gid,
+            uid: ${au.uid},
+            gid: ${au.gid},
             env : {
-              HOME: au.home,
+              HOME:'${au.home}',
             },
             stdio: ['ignore', 'ignore', 'ignore', 'ipc']
           },
-          monitor: true
-        };
+          monitor: true,
+          callback: (ch, cm) => {
+            ch.on('error', err => {
+              cm.errorHandle(err, '--CHILD--')
+            })
+          }
+        };`
   
-        fs.writeFileSync(ucfgpath, 
-                        JSON.stringify(ucfg),
-                        {encoding: 'utf8'}
-                      );
+        fs.writeFileSync(ucfgpath, ucfg, {encoding: 'utf8'});
   
         fs.writeFileSync(`/tmp/cdpc_watch/load`, ucfgpath, {encoding: 'utf8'});
   
