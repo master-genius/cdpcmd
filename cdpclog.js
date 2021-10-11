@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const fmtTime = require('./fmttime')
 
 const fsp = fs.promises
 
@@ -14,6 +15,8 @@ class cdpclog {
     this.maxLines = 20000
 
     this.count = 0
+
+    this.checkLock = false
 
     this.maxHistory = 15
 
@@ -56,20 +59,84 @@ class cdpclog {
 
   }
 
-  checkLog () {
+  clearHistory () {
+    if (this.historyList.length < this.maxHistory) return;
+
+    let i = 0;
+    let total = 5;
+    let hfile;
+
     
+
   }
 
-  log () {
-    
+  async _checkLines () {
+    if (this.count < this.maxLines) return;
+
+    try {
+      let new_log = `${this.logdir}/${fmtTime()}_${this.logname}`
+      await fsp.rename(this.logfile, new_log)
+      this.historyList.push(new_log)
+    } catch (err) {}
+
   }
 
-  okLog (err, errname) {
+  async checkLog () {
+    if (this.checkLock) return;
 
+    this.checkLock = true
+
+    await this._checkLines()
+
+    this.clearHistory()
+
+    this.checkLock = false
+  }
+
+  fmtLog (msg) {
+    return `@ ${msg.logname || 'log'} | ${fmtTime()} | ${msg.message} | ${msg.other || '-'}\n`
+  }
+
+  fmtErrorLog (msg) {
+    return `! ${msg.errorType} | ${fmtTime} | `
+        + `${msg.message} | ${msg.code || '-'} | ${msg.errname} | ${msg.other || '-'}\n`
+        + `  ${msg.stack}\n`
+  }
+
+  /**
+   * 日志格式
+   *    @ 正确的日志
+   *    ! 错误的日志
+   *    ' | '字段分隔符
+   */
+
+  log (msg) {
+    if (!msg.type) {
+      return
+    }
+
+    let logtext = ''
+
+    if (msg.type === 'error') {
+      logtext = this.fmtErrorLog(msg)
+    } else {
+      logtext = this.fmtLog(msg)
+    }
+
+    this.flog && this.flog.write(logtext) && (this.count += 1)
+
+    this.checkLog()
   }
 
   errorLog (err, errname) {
-
+    this.log({
+      type: 'error',
+      errorType: err.constructor.name,
+      errname: errname,
+      message: err.message,
+      stack: err.stack || '',
+      code: err.code || ''
+    })
   }
 
 }

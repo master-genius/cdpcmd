@@ -90,6 +90,10 @@ function addChildApp (msg, cm) {
   }
 }
 
+function postLog(msg, cm) {
+  clog.log(msg)
+}
+
 process.on('message', (msg, handle) => {
   if (msg.op) {
       switch (msg.op) {
@@ -101,7 +105,9 @@ process.on('message', (msg, handle) => {
           msg.name && cm[msg.op](msg.name);
           break;
 
+        //提交日志
         case 'log':
+          postLog(msg, cm);
           break;
 
         case 'add':
