@@ -41,6 +41,10 @@ install_cdpc () {
         mkdir "$CDPC_DIR/config"
     fi
 
+    if [ ! -d "$CDPC_DIR/logs" ] ; then
+        mkdir "$CDPC_DIR/logs"
+    fi
+
     if [ ! -d "$CDPC_DIR/webserver/config" ] ; then
         mkdir "$CDPC_DIR/webserver/config"
     fi

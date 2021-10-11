@@ -5,11 +5,13 @@ ME=`whoami`
 CDPC_DIR=/usr/local/cdpc
 CDPC_WATCH=/tmp/cdpc_watch
 CDPC_LOADINFO=/tmp/cdpcd-load.log
+CDPC_LOGDIR="$CDPC_DIR/logs"
 
 if [ "$UID" -gt 0 ] ; then
     CDPC_DIR="$HOME/.local/cdpc"
     CDPC_WATCH="$CDPC_DIR/watch"
     CDPC_LOADINFO="$CDPC_DIR/cdpcd-load.log"
+    CDPC_LOGDIR="$CDPC_DIR/logs"
 fi
 
 if [ ! -d "$CDPC_DIR" ] ; then
@@ -20,6 +22,10 @@ CDPC_CONFIG="$CDPC_DIR/config"
 
 if [ ! -d "$CDPC_CONFIG" ] ; then
     mkdir -p $CDPC_CONFIG
+fi
+
+if [ ! -d "$CDPC_LOGDIR" ] ; then
+    mkdir -p "$CDPC_LOGDIR"
 fi
 
 if [ ! -d "$CDPC_WATCH" ] ; then
@@ -189,7 +195,6 @@ case $1 in
         ;;
 
     reload)
-        check_args2_exit $# 2
         date > $CDPC_WATCH/reload
         ;;
 
@@ -261,6 +266,7 @@ case $1 in
         ;;
     
     *)
-        help
+        echo "未知操作命令，可使用cdpc help查看帮助文档"
+        exit 0
         ;;
 esac

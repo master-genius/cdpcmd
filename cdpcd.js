@@ -9,6 +9,8 @@ let loadfile = '/tmp/cdpcd-load.log';
 let event_dir = '/tmp/cdpc_watch';
 let logfile = '/tmp/cdpcd.log';
 let pidfile = '/tmp/cdpcd-pid';
+let logdir = __dirname + '/logs';
+
 let preg = /node.*cdpcd\.js/i;
 
 let euid = process.geteuid();
@@ -17,9 +19,12 @@ if (euid > 0) {
   let local_path = `${process.env.HOME}/.local/cdpc`;
 
   config_path = `${local_path}/config`;
+  logdir = `${local_path}/logs`;
+  
   loadfile = `${local_path}/cdpcd-load.log`;
   event_dir = `${local_path}/watch`;
-  logfile = `${local_path}/cdpcd.log`;
+
+  logfile = `${logdir}/cdpcd.log`;
 
   pidfile = `${local_path}/cdpcd-pid`;
 
