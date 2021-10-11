@@ -44,7 +44,7 @@ function authUser (uname) {
 
   let au = getuser(uname)
 
-  if (!au) {
+  if (!au || !au.home || au.home === '/') {
     return false
   }
   

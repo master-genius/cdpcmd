@@ -15,14 +15,28 @@ try {
   process.exit(1)
 }
 
+let _stcolor = {
+  RUNNING: '\x1b[2;36m',
+  PAUSE : '\x1b[2;33m',
+  EXIT : '\x1b[2;37m'
+}
+
+function stateColor (st) {
+  let color_text = _stcolor[st] || ''
+
+  if (!color_text) return st
+
+  return `${color_text}${st}\x1b[0m`
+}
+
 function fmtLoadText (ld) {
   let text = ''
 
   for (let ch of ld.childs) {
-    text += `Name: ${ch.name}\n`
-    text += `Args: ${ch.args.join(' ')}\n`
-    text += `Stat: ${ch.state}\n`
-    text += `CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n\n`
+    text += ` Name: ${ch.name}\n`
+    text += ` Args: ${ch.args.join(' ')}\n`
+    text += ` Stat: ${stateColor(ch.state)}\n`
+    text += ` ·PID: ${ch.pid}  CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n\n`
   }
 
   return text

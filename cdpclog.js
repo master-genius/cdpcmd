@@ -22,6 +22,8 @@ class cdpclog {
 
     this.historyList = []
 
+    this.logfile = logfile
+
     this.logdir = path.resolve( path.dirname(logfile) )
 
     this.logname = path.basename(logfile)
@@ -32,6 +34,8 @@ class cdpclog {
         if (!f.isFile()) continue
 
         if (f.name.substring(f.name.length - 4) !== '.log') continue
+
+        if (f.name === this.logname) continue
 
         this.historyList.push(`${this.logdir}/${f.name}`)
       }
@@ -47,7 +51,7 @@ class cdpclog {
 
   async init () {
 
-    this.flog = fs.createWriteStream(this.logfile, 'a+', {flags: 'a+', mode: 0o644})
+    this.flog = fs.createWriteStream(this.logfile, {flags: 'a+', mode: 0o644})
 
     this.flog.on('close', () => {
       this.flog = null
@@ -66,17 +70,21 @@ class cdpclog {
     let total = 5;
     let hfile;
 
-    
-
+    while (i < total) {
+      hfile = this.historyList.shift();
+      if (!hfile) return;
+      fs.unlink(hfile, err => {});
+      i += 1;
+    }
   }
 
   async _checkLines () {
     if (this.count < this.maxLines) return;
 
     try {
-      let new_log = `${this.logdir}/${fmtTime()}_${this.logname}`
-      await fsp.rename(this.logfile, new_log)
-      this.historyList.push(new_log)
+      let new_log = `${this.logdir}/${fmtTime()}_${this.logname}`;
+      await fsp.rename(this.logfile, new_log);
+      this.historyList.push(new_log);
     } catch (err) {}
 
   }
@@ -111,7 +119,7 @@ class cdpclog {
    */
 
   log (msg) {
-    if (!msg.type) {
+    if (!msg.type || !msg.message) {
       return
     }
 

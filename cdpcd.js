@@ -7,7 +7,7 @@ const fs = require('fs');
 let config_path = `${__dirname}/config`;
 let loadfile = '/tmp/cdpcd-load.log';
 let event_dir = '/tmp/cdpc_watch';
-let logfile = '/tmp/cdpcd.log';
+let logfile = `${__dirname}/logs/cdpcd.log`;
 let pidfile = '/tmp/cdpcd-pid';
 let logdir = __dirname + '/logs';
 
@@ -67,6 +67,10 @@ const cdpc = require('cdpc');
 const cdpclog = require('./cdpclog');
 
 const clog = new cdpclog(logfile);
+
+clog.init().catch(err => {
+  fs.writeFile('/tmp/cdpcd-temp.log', err.message, err => {});
+});
 
 const cm = new cdpc({
   //notExit: true,

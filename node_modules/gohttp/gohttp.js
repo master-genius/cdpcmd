@@ -216,7 +216,9 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
     length: 0,
     data : '',
     ok : true,
-    status : 200,
+    status : 0,
+    timeout: null,
+    error: null,
     headers : {},
   };
 
@@ -228,7 +230,12 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
     return JSON.parse(ret.data.toString(ecd));
   };
 
+  ret.blob = () => {
+    return ret.data;
+  };
+
   return new Promise ((rv, rj) => {
+
       var r = h.request(opts, (res) => {
 
         if (opts.encoding) {
@@ -266,12 +273,19 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
           rv(ret);
         });
   
-        res.on('error', (err) => { rj(err); });
+        res.on('error', (err) => {
+          ret.error = err;
+          rv(ret);
+        });
     });
 
     r.setTimeout(opts.timeout);
 
-    r.on('timeout', (sock) => { r.destroy(); });
+    r.on('timeout', (sock) => {
+      r.destroy();
+      ret.timeout = true;
+      rv(ret);
+    });
     
     r.on('error', (e) => { rj(e); });
 
