@@ -155,7 +155,7 @@ process.on('message', (msg, handle) => {
 if (euid === 0) {
     cm.runChilds([
         {
-            name: 'cdpc-web-server',
+            name: 'cdpcd-web-server',
             file: 'webserver/app.js',
             restart: 'always',
             restartDelay: 500,

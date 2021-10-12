@@ -46,5 +46,4 @@ function fmtSystemd (options) {
   return text
 }
 
-
 console.log(fmtSystemd())
