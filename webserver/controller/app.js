@@ -38,6 +38,8 @@ class app {
 
   }
 
+  //对应于应用的remove、safeRemove操作。
+
   async delete (c) {
 
   }

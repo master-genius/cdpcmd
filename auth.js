@@ -7,7 +7,7 @@ if (process.geteuid() > 0) {
 }
 
 const fs = require('fs')
-const getuser = require('./getuser')
+const getuser = require('./lib/getuser')
 
 try {
   fs.accessSync('./uauth')

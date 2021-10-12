@@ -1,22 +1,33 @@
-名称    cdpc
+.TH cdpc cdpcd "mno" "child process management" "Node.js"
 
-概要：
+.SH 名称
+cdpc
 
-cdpc是基于Node.js的进程管理服务，通过一套授权方式，让普通用户具备运行cdpc管理所属用户进程的功能。cdpc使用一些子命令来实现各种操作。
+.SH 描述（DESCRIPTION）
+cdpc是基于Node.js的进程管理服务，通过一套授权方式，让普通用户
+具备运行cdpc管理所属用户进程的功能。cdpc使用一些子命令来实现各种操作。
+不同的用户权限，操作的方式和可以运行的子命令有所区别，一些高级操作只有root用户才可以运行，
+所以使用sudo以root身份运行可以管理所有进程，而普通用户直接使用cdpc则默认是管理用户自身的进程。
 
-不同的用户权限，操作的方式和可以运行的子命令有所区别，一些高级操作只有root用户才可以运行，所以使用sudo以root身份运行可以管理所有进程，而普通用户直接使用cdpc则默认是管理用户自身的进程。
-
-使用：
+.SH 使用：
 
 cdpc [COMMAND] [OPTIONS] [ARGUMENTS]
 
-示例：
+.SH 示例
 
 cdpc start --all
 
 cdpc stop --all
 
 cdpc pause app1
+
+.SH 授权
+
+cdpc需要在root用户权限下管理服务，但是实际需求是每个普通用户有时候也需要能够运行cdpc命令管理自己的服务，这是通过授权的方式实现的。最高级管理员用户给其他普通用户授权后，普通用户就可以使用cdpc的大部分功能（控制cdpc内置的web server除外）。
+.sp
+授权命令示例：
+sudo cdpc auth add xx
+sudo cdpc auth remove xx
 
 详细描述：
 

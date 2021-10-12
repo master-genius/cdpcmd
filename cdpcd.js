@@ -4,6 +4,25 @@ process.chdir(__dirname);
 
 const fs = require('fs');
 
+function try_mkdir (dname) {
+  let dst = true
+
+  try {
+    fs.accessSync(dname)
+  } catch (err) {
+    dst = false
+  }
+
+  if (dst) return;
+
+  try {
+    fs.mkdirSync(dname)
+  } catch (err) {
+    fs.writeFile('/tmp/cdpcd-temp.log', err.message, err => {});
+  }
+
+}
+
 let config_path = `${__dirname}/config`;
 let loadfile = '/tmp/cdpcd-load.log';
 let event_dir = '/tmp/cdpc_watch';
@@ -29,6 +48,10 @@ if (euid > 0) {
   pidfile = `${local_path}/cdpcd-pid`;
 
   preg = new RegExp(`node.*cdpcd\.js.*--uid.*${euid}`);
+
+  try_mkdir(local_path)
+  try_mkdir(config_path)
+  try_mkdir(event_dir)
 }
 
 try {
@@ -64,7 +87,7 @@ try {
 }
 
 const cdpc = require('cdpc');
-const cdpclog = require('./cdpclog');
+const cdpclog = require('./lib/cdpclog');
 
 const clog = new cdpclog(logfile);
 
@@ -117,9 +140,13 @@ process.on('message', (msg, handle) => {
         case 'add':
           addChildApp(msg, cm);
           break;
-        
+
+        case 'forceRemove':
+          msg.name && cm.remove(msg.name);
+          break;
+
         case 'remove':
-          msg.name && cm.safeRemove(msg, msg.name);
+          msg.name && cm.safeRemove(msg.name);
           break;
       }
   }
