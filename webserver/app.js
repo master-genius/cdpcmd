@@ -21,20 +21,22 @@ let opts = {
 
 let cert_path = `${__dirname}/config/cert`
 
-try {
-  fs.accessSync(`${cert_path}/cdpc-web-server.key`)
-  opts.key = `${cert_path}/cdpc-web-server.key`
+let server_name = 'cdpcd-web-server'
 
-  fs.accessSync(`${cert_path}/cdpc-web-server.pem`)
-  opts.cert = `${cert_path}/cdpc-web-server.pem`
+try {
+  fs.accessSync(`${cert_path}/${server_name}.key`)
+  opts.key = `${cert_path}/${server_name}.key`
+
+  fs.accessSync(`${cert_path}/${server_name}.pem`)
+  opts.cert = `${cert_path}/${server_name}.pem`
 
 } catch (err) {
 
 }
 
 try {
-  fs.accessSync(`${cert_path}/cdpc-web-server.crt`)
-  opts.cert = `${cert_path}/cdpc-web-server.crt`
+  fs.accessSync(`${cert_path}/${server_name}.crt`)
+  opts.cert = `${cert_path}/${server_name}.crt`
 } catch (err) {
   opts.cert = ''
 }
@@ -65,8 +67,8 @@ app.addService('configDir', __dirname + '/config')
 
 app.addService('certDir', cert_path)
 
-app.addService('certFile', `cdpc-web-server.pem`)
-app.addService('keyFile', `cdpc-web-server.key`)
+app.addService('certFile', `${server_name}.pem`)
+app.addService('keyFile', `${server_name}.key`)
 
 try {
   fs.accessSync('./config/apitk')
@@ -83,7 +85,7 @@ tb.init(app)
 app.addService('restart', () => {
   if (process.send && typeof process.send === 'function') {
     process.send({
-      name: 'cdpc-web-server',
+      name: server_name,
       op: 'restart'
     })
   }
