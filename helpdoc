@@ -36,21 +36,38 @@ sudo cdpc auth add xx
 sudo cdpc auth remove xx
 
 .SH 子命令
-.B restart
 
-.B start
+对于restart、start、stop、pause、resume、remove操作，都是以下操作方式：
 
-.B stop
+cdpc [控制选项] [应用名称]
 
-.B pause
+--all表示所有应用。
 
-.B resume
+.B restart 重启应用
 
-.B remove
+.B start 启动应用
 
-.B auth
+.B stop 停止应用
 
-.B config
+.B pause 暂停应用
 
-.B status
+不退出，但是进程暂时不再被系统调度。
+
+.B resume 恢复暂停的应用。
+
+.B remove 移除应用。
+
+.B auth 授权用户，不加参数表示查看授权信息。
+
+对于普通用户来说，auth仅仅是查看自己是否被授权。已被授权的用户可以使用config
+添加配置文件，既可以让自己的服务程序在后台执行。对于超级用户可以通过add添加授权用户，通过remove移除已授权用户。
+
+.B config 管理配置
+
+config支持子命令show、add、remove用于管理配置文件。
+
+.B status 显示应用状态
+
+每个用户都仅仅能看到自己当前管理的应用。
+
 

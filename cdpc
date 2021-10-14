@@ -160,7 +160,7 @@ handle_log () {
         clear)
             clear_logs
             ;;
-        clearall
+        clearall)
             clear_logs
             > "$CDPC_LOGDIR/cdpcd.log"
             ;;
@@ -214,11 +214,11 @@ case $1 in
 
     log)
         if [ "$#" -lt 2 ] ; then
-            if [ -f "$CDPC_LOGDIR" ] ; then
+            if [ -d "$CDPC_LOGDIR" ] ; then
                 LOGFILES=`ls $CDPC_LOGDIR | sort`
                 for f in $LOGFILES ; do
                     echo "$f:"
-                    cat $f -b
+                    cat "$CDPC_LOGDIR/$f" -b
                 done
             fi
             exit 0
@@ -292,7 +292,13 @@ case $1 in
         ;;
     
     *)
-        echo "未知操作命令，可使用cdpc help查看帮助文档"
+        echo "使用cdpc help查看帮助文档"
+        echo "快速使用提示："
+        echo "  cdpc status 查看应用状态"
+        echo "  cdpc config add [文件路径] 添加配置文件"
+        echo "  cdpc config show 显示配置文件详情"
+        echo "  cdpc config add"
+
         exit 0
         ;;
 esac
