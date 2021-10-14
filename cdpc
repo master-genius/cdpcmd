@@ -292,12 +292,21 @@ case $1 in
         ;;
     
     *)
-        echo "使用cdpc help查看帮助文档"
+        printf "\x1b[2;36m使用cdpc help查看帮助文档\n\x1b[0m"
         echo "快速使用提示："
         echo "  cdpc status 查看应用状态"
         echo "  cdpc config add [文件路径] 添加配置文件"
         echo "  cdpc config show 显示配置文件详情"
-        echo "  cdpc config add"
+        echo "  cdpc config remove [配置文件名称] 移除配置文件"
+        echo "  cdpc start  [应用名称] 启动应用"
+        echo "  cdpc stop   [应用名称] 停止应用"
+        echo "  cdpc pause  [应用名称] 暂停应用"
+        echo "  cdpc resume  [应用名称] 恢复暂停的应用"
+        echo "  cdpc restart [应用名称] 重启应用"
+        echo "  cdpc auth 查看自己是否被授权/查看授权信息"
+        echo "示例："
+        echo "  cdpc stop --all"
+        echo "  cdpc restart app1 app2"
 
         exit 0
         ;;
