@@ -165,11 +165,11 @@ class _response {
     this.headers = null
     this.status = 0
     this.data = null
-    this.timeout = null
+    this.timeout = false
     this.error = null
     this.ok = null
     this.buffers = []
-    this.totalLength = 0
+    this.length = 0
     this.contentLength = 0
   }
 
@@ -294,7 +294,7 @@ async function _download (stream, reqobj, ret, bkey) {
     })
 
     stream.on('data', chunk => {
-      ret.totalLength += chunk.length
+      ret.length += chunk.length
       _writeStream.write(chunk)
       if (reqobj.ondata && typeof reqobj.ondata === 'function') {
         reqobj.ondata(ret)
@@ -500,13 +500,13 @@ class _Request {
       } else {
         stm.on('data', chunk => {
           ret.buffers.push(chunk)
-          ret.totalLength += chunk.length
+          ret.length += chunk.length
         })
       }
 
       stm.on('end', () => {
         if (ret.buffers && ret.buffers.length > 0) {
-          ret.data = Buffer.concat(ret.buffers, ret.totalLength)
+          ret.data = Buffer.concat(ret.buffers, ret.length)
           ret.buffers = null
         }
         stm.close()

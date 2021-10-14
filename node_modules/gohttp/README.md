@@ -158,6 +158,40 @@ httpcli.download('https://localhost:2021/download', {
 
 ```
 
+## 请求返回值（res）
+
+请求的返回值包括以下属性：
+
+**ok**
+true或false，表示请求是否成功。
+
+**status**
+状态码，若是请求连接都没有成功则为0。
+
+**error**
+初始值为null，若是出错则为具体的Error实例。
+
+**headers**
+响应头信息。
+
+**timeout**
+初始值为false，若是为true则表示请求超时。
+
+**blob**
+函数，返回响应数据的原始Buffer。
+
+**text**
+函数，以字符串的形式返回响应数据。
+
+**json**
+函数，以JS对象的形式返回响应数据。就是对text返回的值做一次JSON.parse。
+
+**length**
+返回数据的总长度，单位是字节。
+
+> **HTTP/2客户端返回的res也包括这些属性。**
+
+
 ## HTTP/2 请求
 
 ### 连接

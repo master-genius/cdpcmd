@@ -98,30 +98,6 @@ handle_config () {
 }
 
 handle_app () {
-    case $1 in
-        start)
-            ;;
-
-        stop)
-            ;;
-
-        restart)
-            ;;
-
-        pause)
-            ;;
-        
-        resume)
-            ;;
-
-        remove)
-            ;;
-        *)
-            echo "$1 : unknow command"
-            return 1
-            ;;
-    esac
-
     echo "$ARGS" > $CDPC_WATCH/$1
 }
 
@@ -147,7 +123,7 @@ handle_webserver () {
             ;;
     esac
 
-    echo cdpc-web-server > $CDPC_WATCH/$1
+    echo cdpcd-web-server > $CDPC_WATCH/$1
 }
 
 handle_auth () {
@@ -164,6 +140,31 @@ handle_auth () {
     esac
 
     node /usr/local/cdpc/auth.js $1 $2
+}
+
+load_config () {
+    echo $1 > $CDPC_WATCH/load
+}
+
+clear_logs () {
+    LOGFILES=`ls $CDPC_LOGDIR`
+    for f in $LOGFILES ; do
+        if [ ! "$f" = "cdpcd.log" ] ; then
+            rm "$CDPC_LOGDIR/$f"
+        fi
+    done
+}
+
+handle_log () {
+    case $1 in
+        clear)
+            clear_logs
+            ;;
+        clearall
+            clear_logs
+            > "$CDPC_LOGDIR/cdpcd.log"
+            ;;
+    esac
 }
 
 parse_args $@
@@ -198,7 +199,32 @@ case $1 in
         date > $CDPC_WATCH/reload
         ;;
 
+    remove)
+        check_args2_exit $# 2
+        handle_app remove $ARGS
+        ;;
+
+    load)
+        if [ "$#" -lt 2 ] ; then
+            load_config $CDPC_CONFIG
+        else
+            load_config $2
+        fi
+        ;;
+
     log)
+        if [ "$#" -lt 2 ] ; then
+            if [ -f "$CDPC_LOGDIR" ] ; then
+                LOGFILES=`ls $CDPC_LOGDIR | sort`
+                for f in $LOGFILES ; do
+                    echo "$f:"
+                    cat $f -b
+                done
+            fi
+            exit 0
+        fi
+
+        handle_log $2
         ;;
 
     status)

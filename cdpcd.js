@@ -103,7 +103,7 @@ const cm = new cdpc({
   config: config_path,
   eventDir: event_dir,
   debug: true,
-  errorHandle: clog.errorLog
+  errorHandle: clog.errorLog.bind(clog)
 });
 
 cm.strong();

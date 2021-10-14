@@ -217,7 +217,7 @@ gohttp.prototype._coreRequest = async function (opts, postData, postState) {
     data : '',
     ok : true,
     status : 0,
-    timeout: null,
+    timeout: false,
     error: null,
     headers : {},
   };
