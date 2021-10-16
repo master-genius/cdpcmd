@@ -70,6 +70,10 @@ app.addService('certDir', cert_path)
 app.addService('certFile', `${server_name}.pem`)
 app.addService('keyFile', `${server_name}.key`)
 
+app.addService('apitkFile', `${app.service.configDir}/apitk`)
+
+app.addService('hostFile', `${app.service.configDir}/host`)
+
 try {
   fs.accessSync('./config/apitk')
   app.addService('token', fs.readFileSync('./config/apitk', {encoding: 'utf8'}) )
@@ -92,5 +96,13 @@ app.addService('restart', () => {
 })
 
 app.use(new tofile)
+
+try {
+  fs.accessSync(app.service.hostFile)
+  let host = fs.readFileSync(app.service.hostFile, {encoding: 'utf8'})
+  argsOptions['--host'].match(host) && (args.host = host)
+} catch (err) {
+
+}
 
 app.run(10101, args.host)

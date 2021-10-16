@@ -8,6 +8,12 @@ CDPC_LOADINFO=/tmp/cdpcd-load.log
 CDPC_LOGDIR="$CDPC_DIR/logs"
 
 if [ "$UID" -gt 0 ] ; then
+
+    if [[ ! -d "$CDPC_DIR/uauth" ]] || [ ! -f "$CDPC_DIR/uauth/$ME" ] ; then
+        echo "没有被授权，普通用户无法使用cdpc管理服务。（You are not authorized.）"
+        exit 1
+    fi
+
     CDPC_DIR="$HOME/.local/cdpc"
     CDPC_WATCH="$CDPC_DIR/watch"
     CDPC_LOADINFO="$CDPC_DIR/cdpcd-load.log"

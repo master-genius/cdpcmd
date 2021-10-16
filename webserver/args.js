@@ -25,7 +25,7 @@ module.exports = {
     name: 'host',
     type: 'string',
     match : new RegExp(host_preg, 'i'),
-    default: '0.0.0.0'
+    default: '0.0.0.0',
   },
 
 }
