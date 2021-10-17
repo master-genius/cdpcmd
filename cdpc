@@ -6,6 +6,7 @@ CDPC_DIR=/usr/local/cdpc
 CDPC_WATCH=/tmp/cdpc_watch
 CDPC_LOADINFO=/tmp/cdpcd-load.log
 CDPC_LOGDIR="$CDPC_DIR/logs"
+CDPC_UAUTH="$CDPC_DIR/uauth"
 
 if [ "$UID" -gt 0 ] ; then
 
@@ -235,6 +236,20 @@ case $1 in
 
     status)
         node /usr/local/cdpc/outstatus.js $CDPC_LOADINFO
+        if [ "$UID" -eq 0 ] ; then
+            if [ -d "$CDPC_UAUTH" ] ; then
+                UAULIST=`ls $CDPC_UAUTH`
+                UCDPCD_LOAD=''
+                for u in $UAULIST ; do
+                    echo "------ $u ------:"
+                    UHOMEDIR=`cat $CDPC_UAUTH/$u`
+                    UCDPCD_LOAD="$UHOMEDIR/.local/cdpc/cdpcd-load.log"
+                    if [ -f "$UCDPCD_LOAD" ] ; then
+                        node /usr/local/cdpc/outstatus.js $UCDPCD_LOAD
+                    fi
+                done
+            fi
+        fi
         ;;
     
     #start stop restart

@@ -7,7 +7,7 @@ const tbloader = require('titbit-loader')
 const parseArgv = require('npargv')
 const {tofile} = require('titbit-toolkit')
 const argsOptions = require('./args')
-
+const apitk = require('../lib/apitk')
 const fs = require('fs')
 
 let { args } = parseArgv(argsOptions)
@@ -74,12 +74,39 @@ app.addService('apitkFile', `${app.service.configDir}/apitk`)
 
 app.addService('hostFile', `${app.service.configDir}/host`)
 
+let config_state = true
+
 try {
-  fs.accessSync('./config/apitk')
-  app.addService('token', fs.readFileSync('./config/apitk', {encoding: 'utf8'}) )
+  fs.accessSync('./config')
 } catch (err) {
-  console.error('未发现token文件，请检查是否安装正确。')
-  process.exit(1)
+  config_state = false
+}
+
+if (!config_state) {
+  try {
+    fs.mkdirSync('./config', {mode: 0o754})
+    config_state = true
+  } catch (err) {}
+}
+
+let token_state = true
+
+let token_file = './config/apitk'
+
+try {
+  fs.accessSync(token_file)
+  app.addService('token', fs.readFileSync(token_file, {encoding: 'utf8'}))
+} catch (err) {
+  token_state = false
+}
+
+if (token_state === false) {
+  let new_tk = apitk()
+  try {
+    fs.writeFileSync(token_file, new_tk, {encoding: 'utf8'})
+    token_state = true
+    app.addService('token', new_tk)
+  } catch (err) {}
 }
 
 let tb = new tbloader()

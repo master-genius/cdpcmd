@@ -2,7 +2,7 @@
 
 process.chdir(__dirname)
 
-const crypto = require('crypto')
+const apitk = require('./lib/apitk')
 const fs = require('fs')
 
 let tokenstr = ''
@@ -12,10 +12,4 @@ try {
   tokenstr = fs.readFileSync('./tmp/tokenstr', {encoding: 'utf8'})
 } catch (err) {}
 
-let rstr = `${Math.random()}${Date.now()}${Math.random()}${Math.random()}${tokenstr}`
-
-let h = crypto.createHash('sha256')
-
-h.update(rstr)
-
-console.log( h.digest('hex') )
+console.log( apitk(tokenstr) )
