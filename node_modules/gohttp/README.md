@@ -15,6 +15,8 @@ npm i gohttp
 
 **以下是3.x版本的http1请求过程，从4.0开始，接口不变，但是导出方式发生了变化。因为包含http1和http2的客户端请求，这两个协议在不使用ALPN支持，并且没有兼容接口的时候，是无法自动适应的。这里给出的封装就是基于http/https模块封装了HTTP/1.1的请求，基于http2模块封装了HTTP/2的请求。**
 
+**4.2.0版本开始，httpcli提供了一个兼容http2cli的接口层。在接口层面，可以实现一致的请求方式。具体参考后面的文档描述。**
+
 ## HTTP/1.1协议的请求
 
 > 从4.0开始，导出方式：
@@ -481,5 +483,37 @@ if (port_ind > 0 && port_ind < process.argv.length - 1) {
 }
 
 app.run(port)
+
+```
+
+----
+
+## 兼容http2cli的接口层
+
+这个接口层不会从协议层面兼容，Node.js层面也仅仅提供了http2服务端的兼容层。此兼容层接口设计目的是，当你需要切换协议时，不必更改代码。而在这之前，你需要知道服务端使用了什么协议。如果服务端兼容HTTP/2和HTTP/1.1，那么客户端使用哪个协议都是可以的。
+
+兼容层接口的使用方式和HTTP/2的封装使用一致（http2cli），可以直接参考 ‘HTTP/2请求’ 部分。
+
+示例：
+
+```javascript
+
+const {httpcli} = require('gohttp');
+
+let hs = httpcli.connect('http://localhost:1234');
+
+hs.post({
+    path: '/p',
+    body: {
+        a: 123,
+        b: 234
+    },
+    headers: {
+        'content-type': 'application/x-www-form-urlencoded'
+    }
+})
+.then(res => {
+    console.log(res.text(), res.headers);
+})
 
 ```
