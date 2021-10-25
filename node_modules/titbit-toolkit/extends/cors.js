@@ -94,14 +94,15 @@ class cors {
         c.setHeader('access-control-allow-headers', self.allowHeaders);
         c.setHeader('access-control-request-headers', self.requestHeaders);
 
-        if (c.method === 'OPTIONS' && self.optionsCache) {
-          c.setHeader('cache-control', self.optionsCache);
+        //method is OPTIONS
+        if (c.method[0] === 'O') {
+          self.optionsCache && c.setHeader('cache-control', self.optionsCache);
+        } else {
+          await next();
         }
 
-        await next();
-
       } else {
-        c.send('', 404);
+        c.status(404).send('');
       }
     };
 
