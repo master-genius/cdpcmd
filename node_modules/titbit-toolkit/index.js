@@ -12,7 +12,7 @@ for (let i = 0; i < files.length; i++) {
 
   if (files[i].name.substring(files[i].name.length - 3) !== '.js') continue
 
-  if (files[i].name[0] === '_') continue
+  if (files[i].name[0] === '_' || files[i].name[0] === '!') continue
 
   let modname = files[i].name.substring(0, files[i].name.length-3)
 

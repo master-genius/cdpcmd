@@ -4,6 +4,29 @@
 
 const zlib = require('zlib');
 
+let _typemap = {
+  '.css' : 'text/css; charset=utf-8',
+  '.js'  : 'text/javascript; charset=utf-8',
+  '.txt' : 'text/plain; charset=utf-8',
+  '.json' : 'text/json; charset=utf-8',
+
+  '.jpg' : 'image/jpeg',
+  '.jpeg' : 'image/jpeg',
+  '.png' : 'image/png',
+  '.gif' : 'image/gif',
+  '.ico' : 'image/x-icon',
+  '.webp' : 'image/webp',
+
+  '.mp3' : 'audio/mp3',
+  '.mp4' : 'video/mp4',
+
+  '.ttf' : 'font/ttf',
+  '.wtf' : 'font/wtf',
+  '.woff' : 'font/woff',
+  '.woff2' : 'font/woff2',
+  '.ttc' : 'font/ttc'
+};
+
 /**
  * 处理静态资源的请求，需要把中间件挂载到一个分组下，否则会影响全局，如果一个只做静态分发的服务则可以全局启用。
  */
@@ -101,27 +124,10 @@ class staticdata {
       this.staticPath = this.staticPath.substring(0, this.staticPath.length-1)
     }
 
-    this.ctypeMap = {
-      '.css' : 'text/css; charset=utf-8',
-      '.js'  : 'text/javascript; charset=utf-8',
-      '.txt' : 'text/plain; charset=utf-8',
-      '.json' : 'text/json; charset=utf-8',
+    this.ctypeMap = _typemap
 
-      '.jpg' : 'image/jpeg',
-      '.jpeg' : 'image/jpeg',
-      '.png' : 'image/png',
-      '.gif' : 'image/gif',
-      '.ico' : 'image/x-icon',
-      '.webp' : 'image/webp',
-
-      '.mp3' : 'audio/mp3',
-      '.mp4' : 'video/mp4',
-
-      '.ttf' : 'font/ttf',
-      '.wtf' : 'font/wtf',
-      '.woff' : 'font/woff',
-      '.woff2' : 'font/woff2',
-      '.ttc' : 'font/ttc'
+    for (let k in this.ctypeMap) {
+      this.ctypeMap[ k.toUpperCase() ] = _typemap[k]
     }
 
   }
@@ -152,18 +158,19 @@ class staticdata {
 
     return async (c, next) => {
 
-      let real_path = c.param.starPath || c.path
+      let rpath = c.param.starPath || c.path
 
-      if (real_path[0] !== '/') {
-        real_path = `/${real_path}`
+      if (rpath[0] !== '/') {
+        rpath = `/${rpath}`
       }
+
+      let real_path = rpath
 
       if (self.decodePath) {
         try {
-          real_path = decodeURIComponent(real_path)
+          real_path = decodeURIComponent(rpath)
         } catch (err) {
-          c.send('', 404)
-          return
+          real_path = rpath
         }
       }
 
