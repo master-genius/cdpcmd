@@ -89,6 +89,11 @@ class proxy {
           this.config = options[k];
           break;
 
+        case 'methods':
+          if (options[k] instanceof Array)
+            this.methods = options[k];
+          break;
+
         case 'maxBody':
           if (typeof options[k] == 'number' && parseInt(options[k]) >= 0) {
             this.maxBody = parseInt(options[k]);
@@ -242,7 +247,7 @@ class proxy {
         }
 
         if (tmp.aliveCheckInterval && typeof tmp.aliveCheckInterval === 'number') {
-          if (tmp.aliveCheckInterval > 0 && tmp.aliveCheckInterval < 7200) {
+          if (tmp.aliveCheckInterval >= 0 && tmp.aliveCheckInterval < 7200) {
             backend_obj.aliveCheckInterval = tmp.aliveCheckInterval;
           }
         }
@@ -504,13 +509,24 @@ class proxy {
   }
 
   setTimer (pxys) {
+
+    let count = 0;
+
+    for (let p of pxys) {
+      if (p.aliveCheckInterval > 0) count += 1;
+    }
+
+    if (count === 0) return null;
     
     let self = this;
 
     return setInterval(() => {
 
       for (let i = 0; i < pxys.length; i++) {
+        if (pxys[i].aliveCheckInterval <= 0) continue;
+
         pxys[i].intervalCount += 1;
+
         if (pxys[i].intervalCount >= pxys[i].aliveCheckInterval) {
           pxys[i].intervalCount = 0;
           self.timerRequest(pxys[i]);
