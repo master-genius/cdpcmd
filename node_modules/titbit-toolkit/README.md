@@ -585,24 +585,30 @@ const app = new titbit({
 })
 
 let pck = new paramcheck({
-  //支持query或param，对应于请求上下文的ctx.query和ctx.param。
+  //支持query、param、body，对应于请求上下文的ctx.query、ctx.param、ctx.body。
   key: 'query',
 
   //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
   //string会严格判等，number仅仅数据判等，object是最强大的功能。
   data : {
+    //严格限制say的值必须是hello。
     say: 'hello',
     ok : 123,
     offset: {
       //如果c.query.offset是undefined，则会赋值为0。
       default: 0,
-      //要转换的类型，只能是int或float
+      //要转换的类型，只能是int、float、boolean
       to: 'int',
       //最小值，>=
       min: 0,
       //最大值，<=
       max: 100
     },
+    test: {
+      default: false,
+      // 转换为布尔类型，若字符串为true则转换为布尔值true，否则转换为布尔值false。
+      to: 'boolean'
+    }
   }
 
 })
@@ -644,7 +650,22 @@ let paramck = new paramcheck({
 
 })
 
-app.use(pck).use(paramck)
+let pmbody = new paramcheck({
+  key: 'body',
+  data: {
+    username: {
+      //必须有这个属性。
+      must: true
+    },
+    passwd: {
+      must: true
+    }
+  }
+})
+
+app.use(pck, {method: 'GET'})
+  .use(paramck, {method: 'GET'})
+  .use(pmbody, {method: ['POST', 'PUT'], name: 'login'})
 
 app.get('/user/:name/:age/:mobile', async c => {
   c.send({
@@ -652,6 +673,10 @@ app.get('/user/:name/:age/:mobile', async c => {
     param: c.param
   })
 })
+
+app.post('/login', async c => {
+  c.send(c.body)
+}, {name: 'login'})
 
 app.run(1234)
 

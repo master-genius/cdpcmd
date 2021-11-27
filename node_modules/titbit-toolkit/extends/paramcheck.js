@@ -8,7 +8,7 @@
 class paramcheck {
 
   constructor (options = {}) {
-    this.type = ['query', 'param']
+    this.type = ['query', 'param', 'body']
 
     this.key = 'param'
 
@@ -64,7 +64,7 @@ class paramcheck {
         }
 
       } else {
-        //数据初始必然是字符串，转换只能是整数或浮点数。
+        //数据初始必然是字符串，转换只能是整数或浮点数或boolean。
         if (rule.to) {
           if (isNaN(obj[k])) {
             return false
@@ -77,6 +77,11 @@ class paramcheck {
 
             case 'float':
               obj[k] = parseFloat(obj[k])
+              break
+            
+            case 'boolean':
+            case 'bool':
+              obj[k] = obj[k] === 'true' ? true : false
               break
           }
         }
@@ -113,21 +118,7 @@ class paramcheck {
   dataFilter (c) {
     let d = c[this.key]
 
-    if (this.data instanceof Array) {
-
-      for (let i = 0; i < this.data.length; i++) {
-        
-        if (typeof this.data[i] !== 'object' || this.data[i].key === undefined) {
-          continue
-        }
-
-        if (!this.checkData(d, this.data[i].key, this.data[i])) {
-          return false
-        }
-
-      }
-
-    } else {
+    if (this.key !== 'body' || c.body !== c.rawBody) {
 
       for (let k in this.data) {
         if (!this.checkData(d, k, this.data[k])) {
@@ -146,8 +137,7 @@ class paramcheck {
 
     return async (c, next) => {
       if (!self.dataFilter(c)) {
-        c.send('bad data', 400)
-        return
+        return c.status(400).send("bad data: request's parameter.")
       }
 
       await next()
