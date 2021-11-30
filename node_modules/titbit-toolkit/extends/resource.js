@@ -126,8 +126,8 @@ class staticdata {
       }
     }
 
-    if (this.maxCacheSize < 500000) {
-      this.maxCacheSize = 500000
+    if (this.maxCacheSize < 10_000_000) {
+      this.maxCacheSize = 10_000_000
     }
 
     if (this.staticPath.length > 1 && this.staticPath[ this.staticPath.length-1 ] === '/') {
@@ -335,13 +335,17 @@ class staticdata {
 
         if (self.cacheFailed >= self.failedLimit) {
 
-          self.cacheFailed = 0
-          self.size = 0
-          self.cache.clear()
+          //以5%的概率决定是否释放缓存。
+          if (parseInt(Math.random() * 100) < 6) {
+            self.cacheFailed = 0
+            self.size = 0
+            self.cache.clear()
+          }
 
         } else if (self.maxCacheSize > 0 && self.size >= self.maxCacheSize) {
 
-          self.cacheFailed += 1
+          if (self.cacheFailed < 1000_000)
+            self.cacheFailed += 1
 
         } else {
 
