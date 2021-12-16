@@ -97,8 +97,6 @@ class stmlimit {
       s.time = tm;
     }
 
-    console.log(id, s)
-
     return true;
   }
 
