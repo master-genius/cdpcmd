@@ -17,6 +17,7 @@ let _typemap = {
   '.html' : 'text/html; charset=utf-8',
   '.xml'  : 'text/xml; charset=utf-8',
 
+  '.svg'  : 'image/svg+xml',
   '.jpg'  : 'image/jpeg',
   '.jpeg' : 'image/jpeg',
   '.png'  : 'image/png',

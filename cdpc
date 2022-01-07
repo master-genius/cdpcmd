@@ -215,7 +215,7 @@ case $1 in
         if [ "$#" -lt 2 ] ; then
             load_config $CDPC_CONFIG
         else
-            load_config $2
+            load_config $CDPC_CONFIG/$2
         fi
         ;;
 
