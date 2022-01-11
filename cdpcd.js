@@ -96,7 +96,7 @@ clog.init().catch(err => {
 });
 
 const cm = new cdpc({
-  notExit: true,
+  //notExit: true,
   loadInfoFile: loadfile,
   showColor: true,
   loadInfoType: 'json',
