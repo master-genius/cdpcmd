@@ -3,7 +3,7 @@
     "cdpc": "^2.3.0",
     "gohttp": "^4.2.1",
     "npargv": "^1.0.2",
-    "options-check": "^1.0.0",
+    "options-check": "^1.0.1",
     "titbit": "^23.0.0",
     "titbit-httpc": "^2.0.2",
     "titbit-loader": "^22.0.5",
