@@ -4,7 +4,7 @@
     "gohttp": "^4.2.1",
     "npargv": "^1.0.2",
     "options-check": "^1.0.1",
-    "titbit": "^23.0.1",
+    "titbit": "^23.0.2",
     "titbit-httpc": "^2.0.2",
     "titbit-loader": "^22.0.5",
     "titbit-toolkit": "^3.1.8"
