@@ -18,7 +18,6 @@
  * 
  * 所以为了保证服务既可以适用于跨域也可以同源，必须要针对referer进行检测。
  * 
- * 
  */
 
 class cors {
@@ -33,6 +32,8 @@ class cors {
 
     //Access-Control-Expose-Headers 指定哪些消息头可以暴露给请求端。
     this.exposeHeaders = '';
+
+    this.allowEmptyReferer = false;
 
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
@@ -50,6 +51,10 @@ class cors {
           if (options[k] === '*' || (options[k] instanceof Array)) {
             this.allow = options[k];
           }
+          break;
+
+        case 'allowEmptyReferer':
+          this.allowEmptyReferer = !!options[k];
           break;
 
         case 'referer':
@@ -153,22 +158,12 @@ class cors {
 
         //非跨域请求，或仅仅是没有携带origin
         let referer = c.headers.referer || '';
+        
+        if (!referer && self.allowEmptyReferer) return await next();
 
         //处理同源请求。要求allow配置为 * 或使用数组配置必须包含返回页面应用的host。
-        if (referer && self.checkReferer(referer)) {
-          return await next();
-        }
+        if (referer && self.checkReferer(referer)) return await next();
         
-        //检测referer是否是同源的请求
-        //这种情况其实还要验证host，就和origin的allow验证一致。
-        //let org_url = `${c.protocol}://${c.host}`;
-
-        /* if (referer.indexOf(org_url) === 0 
-          || (this.emptyReferer && referer === '')
-          || (referer && self.checkReferer(referer)) )
-        {
-          return await next();
-        } */
       }
       
     };

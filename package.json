@@ -6,7 +6,7 @@
     "options-check": "^1.0.1",
     "titbit": "^23.0.2",
     "titbit-httpc": "^2.0.2",
-    "titbit-loader": "^22.0.5",
-    "titbit-toolkit": "^3.1.8"
+    "titbit-loader": "^22.1.1",
+    "titbit-toolkit": "^3.1.9"
   }
 }
