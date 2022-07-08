@@ -77,6 +77,10 @@ install_cdpc () {
         systemctl --force enable $SYSTEMD_FILE
         systemctl start $SYSTEMD_FILE
     fi
+
+    if [ "$?" -ne 0 ] ; then
+        systemctl daemon-reload
+    fi
 }
 
 if [ "$#" -gt 0 ] ; then
