@@ -39,9 +39,9 @@ function fmtSystemd (options) {
 
   text += `WantedBy=multi-user.target\n`
 
-  if (!options.alias) options.alias = 'cdpcd.service'
+  //if (!options.alias) options.alias = 'cdpcd.service'
 
-  text += `Alias=${options.alias}\n`
+  //text += `Alias=${options.alias}\n`
 
   return text
 }

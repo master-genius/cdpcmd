@@ -69,9 +69,14 @@ install_cdpc () {
 
     node makesystemd.js > tmp/$SYSTEMD_FILE
 
-    mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH && \
-    systemctl enable $SYSTEMD_FILE && \
-    systemctl start $SYSTEMD_FILE
+    mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH
+    
+    IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE`
+
+    if [ "$IS_ENABLED" != "enabled" ] ; then
+        systemctl --force enable $SYSTEMD_FILE
+        systemctl start $SYSTEMD_FILE
+    fi
 }
 
 if [ "$#" -gt 0 ] ; then
