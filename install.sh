@@ -74,13 +74,13 @@ install_cdpc () {
     IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE`
 
     if [ "$IS_ENABLED" != "enabled" ] ; then
-        systemctl --force enable $SYSTEMD_FILE
+        systemctl enable $SYSTEMD_FILE
+        if [ "$?" -ne 0 ] ; then
+            systemctl daemon-reload
+        fi
         systemctl start $SYSTEMD_FILE
     fi
 
-    if [ "$?" -ne 0 ] ; then
-        systemctl daemon-reload
-    fi
 }
 
 if [ "$#" -gt 0 ] ; then
