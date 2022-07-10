@@ -134,7 +134,7 @@ if [ "$?" -ne 0 ] ; then
     exit 1
 fi
 
-if ! which node ; then
+if [ -z `which node` ] ; then
     
     if [ -d "$TMPDIR/mno" ] ; then
         rm -rf "$TMPDIR/mno"
@@ -151,5 +151,5 @@ if ! which node ; then
 fi
 
 if [ "$CDPC_DIR" != "$SELFDIR" ] ; then
-    install_cdpc
+    install_cdpc && echo 'OK'
 fi
