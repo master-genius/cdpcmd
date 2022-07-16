@@ -316,7 +316,10 @@ hiiproxy.prototype.mid = function () {
     let pr = self.getBackend(c, host)
 
     if (pr === null) {
-      return c.send(error_503_text, 503)
+      pr = self.getBackend(c, host)
+
+      if (pr === null)
+        return c.send(error_503_text, 503)
     }
 
     if (self.addIP && c.headers['x-real-ip']) {
