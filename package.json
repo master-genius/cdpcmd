@@ -7,6 +7,7 @@
     "titbit": "^23.0.3",
     "titbit-httpc": "^2.0.2",
     "titbit-loader": "^22.1.2",
+    "titbit-token": "^2.0.3",
     "titbit-toolkit": "^3.1.9"
   }
 }
