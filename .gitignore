@@ -1,3 +1,8 @@
 /tmp/
 /webserver/config/
+/node_modules/titbit/test/
+/node_modules/titbit-loader/test/
+/node_modules/titbit-toolkit/test/
+/node_modules/gohttp/test/
+/node_modules/titbit/images
 
