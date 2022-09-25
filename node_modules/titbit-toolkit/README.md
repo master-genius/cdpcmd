@@ -721,4 +721,85 @@ app.daemon(1234, 2);
 
 ```
 
+## JWT
 
+目前对JWT的支持仅仅是HS256、HS384、HS512算法，对于ES等需要非对称密钥加密的方式不做支持，如果你需要功能更强的token处理方案，建议使用titbit-token扩展。
+
+使用：
+
+```javascript
+
+
+const {jwt} = require('titbit-toolkit')
+
+let j = new jwt({
+  //设置超时7200000毫秒
+  timeout: 7200000
+})
+
+//设置算法
+j.alg = 'hs512'
+
+//对数据进行jwt签发，返回token字符串。
+let token = j.make({
+  id: '123we',
+  name: '飞龙在天',
+  username: 'long'
+})
+
+console.log(token)
+
+//验证token
+let r = j.verify(token)
+
+console.log(r)
+
+```
+
+verify(token)接口验证返回值是object，ok属性表示是否成功，如果ok为true则会有data属性表示原始的JSON数据，否则会有errcode属性表示错误状态：
+
+- ILLEGAL 非法的jwt字符串。
+
+- TIMEOUT 超时。
+
+- ERR_HEADER 错误的header数据。
+
+- ERR_DATA payload数据错误。
+
+- FAILED 验证失败，一般是密钥和签发的token不一致。
+
+- UNKNOW_ALG 未知算法。
+
+### 中间件启用JWT
+
+你可以使用make和verify方法在自己编写的中间件中灵活的处理。如果你需要一个更方便的处理过程，可以直接使用mid方法返回中间件，因为titbit支持加载具有mid属性的中间件（mid函数返回真正的中间件，titit识别后自动运行mid函数并添加返回的中间件。），你可以这样做：
+
+```javascript
+'use strict'
+
+const {jwt} = require('titbit-toolkit')
+const Titbit = require('titbit')
+
+let jt = new jwt({
+  //设置超时7200000毫秒
+  timeout: 7200000
+})
+
+//在其他controller中，可以使用ctx.service.jwt.make(DATA)签发token。
+app.addService('jwt', jt)
+
+const app = new Titbit({
+  debug: true
+})
+
+//pre和use的区别是：pre在body数据接收以前执行。
+app.pre(jt.mid())
+
+//或者可以直接：app.pre(jt)
+
+
+app.run(1234)
+
+```
+
+jwt的默认中间件会在验证失败时返回401状态码，如果验证通过，会使用ctx.box.user引用解密后的数据，在后续的处理中直接使用ctx.box.user获取用户的信息。

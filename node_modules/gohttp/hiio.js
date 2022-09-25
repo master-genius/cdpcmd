@@ -500,7 +500,6 @@ class _Request {
     }
 
     if (this.__prefix__ && !reqobj.withoutPrefix) {
-      console.log(this.prefix)
       reqobj.headers[':path'] = `${this.prefix}${reqobj.path}`
     } else {
       reqobj.headers[':path'] = reqobj.path
