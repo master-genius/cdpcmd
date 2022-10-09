@@ -12,10 +12,10 @@ class cookies {
       rr.cookie = {};
 
       if (rr.headers['cookie']) {
-        var cookies = rr.headers['cookie'].split(';').filter(c => c.length > 0);
+        let cookies = rr.headers['cookie'].split(';').filter(c => c.length > 0);
     
-        var tmpList = [];
-        var name = '';
+        let tmpList = [];
+        let name = '';
 
         for(let i = 0; i < cookies.length; i++) {
 

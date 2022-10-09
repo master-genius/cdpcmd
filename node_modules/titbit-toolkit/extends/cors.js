@@ -33,7 +33,7 @@ class cors {
     //Access-Control-Expose-Headers 指定哪些消息头可以暴露给请求端。
     this.exposeHeaders = '';
 
-    this.allowEmptyReferer = false;
+    this.allowEmptyReferer = true;
 
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
