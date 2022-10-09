@@ -5,7 +5,7 @@
     "npargv": "^1.0.2",
     "options-check": "^1.0.1",
     "thread-worker": "^1.0.0",
-    "titbit": "^23.1.0",
+    "titbit": "^23.1.2",
     "titbit-httpc": "^2.0.3",
     "titbit-loader": "^22.1.8",
     "titbit-token": "^2.0.6",

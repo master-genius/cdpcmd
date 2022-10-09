@@ -25,7 +25,7 @@ SYSTEMD_FILE=cdpcd.service
 
 SYSTEMD_PATH=/lib/systemd/system
 
-INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js lib"
+INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js lib config"
 
 install_cdpc () {
     

@@ -152,22 +152,6 @@ process.on('message', (msg, handle) => {
   }
 });
 
-if (euid === 0) {
-    cm.runChilds([
-        {
-            name: 'cdpcd-web-server',
-            file: 'webserver/app.js',
-            restart: 'always',
-            restartDelay: 500,
-            monitor: true,
-            lockReload: true,
-            options: {
-              stdio: ['ignore', 'ignore', 'ignore', 'ipc']
-            },
-        }
-    ])
-}
-
 cm.loadConfig();
 
 cm.monitorStart();
