@@ -97,13 +97,13 @@ fi
 #ubuntu、debian、deepin、mint
 OSNAME="ubuntu"
 
-CHECK_NAME=`cat /etc/os-release | egrep -i '^NAME=.*CentOS|^NAME=.*RedHat'`
+CHECK_NAME=`cat /etc/os-release | grep -E -i '^NAME=.*CentOS|^NAME=.*RedHat'`
 
 if [ -n "$CHECK_NAME" ] ; then
     OSNAME="centos"
 fi
 
-CHECK_NAME=`cat /etc/os-release | egrep -i '^NAME=.*Manjaro|^NAME=.*Arch'`
+CHECK_NAME=`cat /etc/os-release | grep -E -i '^NAME=.*Manjaro|^NAME=.*Arch'`
 
 if [ -n "$CHECK_NAME" ] ; then
     OSNAME="arch"
