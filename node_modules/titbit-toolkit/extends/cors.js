@@ -141,8 +141,8 @@ class cors {
             if (self.exposeHeaders)
               c.setHeader('access-control-expose-headers', self.exposeHeaders);
 
-            //method is OPTIONS
-            if (c.method[0] === 'O') {
+            if (c.method === 'OPTIONS') {
+              c.status(204);
               self.optionsCache && c.setHeader('access-control-max-age', self.optionsCache);
             } else {
               return await next();

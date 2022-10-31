@@ -14,9 +14,10 @@ class parsebody {
 
   mid () {
     return async (c, next) => {
-
       //非允许提交body数据的请求或DELETE请求但是没有提交body数据则直接跳过。
-      if ('DP'.indexOf(c.method[0]) < 0 || (c.method[0] === 'D' && !c.rawBody)) {
+      let md = c.method[0];
+
+      if ((md !== 'P' && md !== 'D') || (md === 'D' && !c.rawBody)) {
         return await next();
       }
 
