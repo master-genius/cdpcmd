@@ -159,10 +159,15 @@ class cors {
         //非跨域请求，或仅仅是没有携带origin
         let referer = c.headers.referer || '';
         
-        if (!referer && self.allowEmptyReferer) return await next();
-
         //处理同源请求。要求allow配置为 * 或使用数组配置必须包含返回页面应用的host。
-        if (referer && self.checkReferer(referer)) return await next();
+        if ((!referer && self.allowEmptyReferer) || (referer && self.checkReferer(referer)) ) {
+          if (c.method === 'OPTIONS') {
+            c.status(204);
+            self.optionsCache && c.setHeader('access-control-max-age', self.optionsCache);
+            return;
+          }
+          return await next();
+        }
         
       }
       
