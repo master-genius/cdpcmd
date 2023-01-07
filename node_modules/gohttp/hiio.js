@@ -506,6 +506,13 @@ class _Request {
     }
 
     reqobj.headers[':method'] = reqobj.method
+
+    if (reqobj.signal) {
+      if (!reqobj.options || typeof reqobj.options !== 'object') {
+        reqobj.options = {}
+      }
+      reqobj.options.signal = reqobj.signal
+    }
   }
 
   async request (reqobj, events = {}) {

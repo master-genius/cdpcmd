@@ -138,6 +138,7 @@ gohttp.prototype.request = async function (url, options = null) {
         case 'body':
         case 'rawBody':
         case 'family':
+        case 'signal':
           opts[k] = options[k];
           break;
 

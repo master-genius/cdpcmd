@@ -246,8 +246,8 @@ class proxy {
           backend_obj.weight = parseInt(tmp.weight);
         }
 
-        if (tmp.aliveCheckInterval && typeof tmp.aliveCheckInterval === 'number') {
-          if (tmp.aliveCheckInterval >= 0 && tmp.aliveCheckInterval < 7200) {
+        if (tmp.aliveCheckInterval !== undefined && typeof tmp.aliveCheckInterval === 'number') {
+          if (tmp.aliveCheckInterval >= 0 && tmp.aliveCheckInterval <= 7200) {
             backend_obj.aliveCheckInterval = tmp.aliveCheckInterval;
           }
         }
