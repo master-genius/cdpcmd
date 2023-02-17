@@ -801,6 +801,9 @@ let paramck = new paramcheck({
   //支持query或param，对应于请求上下文的ctx.query和ctx.param。
   key: 'param',
 
+  //禁止提交的字段
+  deny: ['x-key', 'test'],
+
   //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
   //string会严格判等，number仅仅数据判等，object是最强大的功能。
   data : {
