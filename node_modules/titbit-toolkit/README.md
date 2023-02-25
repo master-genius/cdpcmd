@@ -804,12 +804,15 @@ let paramck = new paramcheck({
   //禁止提交的字段
   deny: ['x-key', 'test'],
 
+  //检测到存在禁止提交的属性则自动删除，默认会返回400错误。
+  deleteDeny: true,
+
   //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
   //string会严格判等，number仅仅数据判等，object是最强大的功能。
   data : {
     name: {
-      //obj是c.query或c.param，k是属性名称
-      callback: (obj, k) => {
+      //obj是c.query或c.param，k是属性名称，method是当前请求方法
+      callback: (obj, k, method) => {
         if (obj[k].length < 2 || obj[k].length > 8) {
           return false
         }
@@ -825,7 +828,7 @@ let paramck = new paramcheck({
     
     mobile: {
       //利用callback，可以实现完全自主的自定义规则。
-      callback: (obj, k) => {
+      callback: (obj, k, method) => {
         let preg = /^(12|13|15|16|17|18|19)[0-9]{9}$/
         if (!preg.test(obj[k])) {
           return false

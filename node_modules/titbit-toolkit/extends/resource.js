@@ -55,6 +55,9 @@ class staticdata {
 
     this.size = 0
 
+    //控制释放缓存的概率，1到100
+    this.prob = 6
+
     //失败缓存统计，当失败缓存计数达到一个阈值，则会清空缓存。
     this.cacheFailed = 0
 
@@ -72,6 +75,8 @@ class staticdata {
 
     this.decodePath = false
 
+    this.maxFileSize = 10_000_000
+
     if (typeof options !== 'object') {
       options = {};
     }
@@ -83,7 +88,10 @@ class staticdata {
           break
 
         case 'maxCacheSize':
-          this.maxCacheSize = options[k]
+        case 'maxFileSize':
+          if (typeof options[k] === 'number') {
+            this[k] = options[k]
+          }
           break
 
         case 'failedLimit':
@@ -124,11 +132,21 @@ class staticdata {
           }
           break
 
+        case 'prob':
+          if (typeof options[k] === 'number' && options[k] >= 1 && options[k] <= 100) {
+            this.prob = options[k]
+          }
+          break
+
       }
     }
 
     if (this.maxCacheSize < 10_000_000) {
       this.maxCacheSize = 10_000_000
+    }
+
+    if (this.maxFileSize < 10000 || this.maxFileSize > 500_000_000) {
+      this.maxFileSize = 10_000_000
     }
 
     if (this.staticPath.length > 1 && this.staticPath[ this.staticPath.length-1 ] === '/') {
@@ -179,10 +197,13 @@ class staticdata {
     return 'application/octet-stream'
   }
 
-  /**
-   * 超过10M的数据则不再缓存，所以不再返回数据。
-   */
-  async pipeData (pathfile, ctx, maxsize = 10000000) {
+  clearCache() {
+    this.size = 0
+    this.cacheFailed = 0
+    this.cache.clear()
+  }
+
+  async pipeData (pathfile, ctx, filesize) {
     let stm = fs.createReadStream(pathfile)
     let dataBuffer = []
     let total = 0
@@ -191,34 +212,23 @@ class staticdata {
       ctx.sendHeader()
     }
 
-    let bufferLock = false
-
     return new Promise((rv, rj) => {
       stm.on('data', data => {
-
-        if (bufferLock) return;
-
-        total += data.length
-
-        if (total > maxsize) {
-          bufferLock = true
+        if (filesize <= this.maxFileSize) {
+          total += data.length
+          dataBuffer.push(data)
         }
-
-        dataBuffer.push(data)
       })
 
       stm.on('error', err => {
+        dataBuffer = null
         rj(err)
       })
 
       stm.on('end', () => {
-        if (bufferLock) {
-          dataBuffer = null
-        }
-        
         if (dataBuffer && dataBuffer.length > 0) {
           let retData = Buffer.concat(dataBuffer, total)
-          dataBuffer = null;
+          dataBuffer = null
           rv(retData)
         } else {
           rv(null)
@@ -226,17 +236,14 @@ class staticdata {
       })
 
       stm.pipe(ctx.reply)
-
     })
 
   }
 
   mid () {
-
     let self = this
 
     return async (c, next) => {
-
       let rpath = c.param.starPath || c.path
 
       if (rpath[0] !== '/') {
@@ -256,7 +263,6 @@ class staticdata {
       let pathfile = `${self.staticPath}${self.prepath}${real_path}`
   
       if (self.cache.has(real_path)) {
-
         let r = self.cache.get(real_path)
 
         c.setHeader('content-type', r.type)
@@ -270,9 +276,7 @@ class staticdata {
           c.setHeader('cache-control', self.cacheControl)
         }
 
-        c.send(r.data)
-
-        return
+        return c.send(r.data)
       }
 
       let file_ok = true
@@ -329,27 +333,23 @@ class staticdata {
           let fst = await fsp.stat(pathfile)
           c.setHeader('content-length', fst.size)
 
-          data = await this.pipeData(pathfile, c)
+          data = await this.pipeData(pathfile, c, fst.size)
           //说明数据太大，放弃了缓存
           if (!data) return;
         }
 
         if (self.cacheFailed >= self.failedLimit) {
-
-          //以5%的概率决定是否释放缓存。
-          if (parseInt(Math.random() * 100) < 6) {
-            self.cacheFailed = 0
-            self.size = 0
-            self.cache.clear()
+          //以{self.prob}%概率决定是否释放缓存。
+          if (parseInt(Math.random() * 100) < self.prob) {
+            self.clearCache()
           }
 
         } else if (self.maxCacheSize > 0 && self.size >= self.maxCacheSize) {
 
-          if (self.cacheFailed < 1000_000)
+          if (self.cacheFailed < 1000_0000)
             self.cacheFailed += 1
 
         } else {
-
           self.cache.set(real_path, {
             data : zipdata || data,
             type : ctype,
@@ -357,9 +357,7 @@ class staticdata {
           })
 
           self.size += zipdata ? zipdata.length : data.length
-
         }
-
       } catch (err) {
         c.status(404).send('read file failed')
       }
