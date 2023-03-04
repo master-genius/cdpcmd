@@ -35,6 +35,10 @@ class cors {
 
     this.allowEmptyReferer = true;
 
+    this.emptyRefererGroup = null;
+
+    this.referer = '';
+
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
     ];
@@ -48,7 +52,7 @@ class cors {
     for (let k in options) {
       switch (k) {
         case 'allow':
-          if (options[k] === '*' || (options[k] instanceof Array)) {
+          if (options[k] === '*' || Array.isArray(options[k])) {
             this.allow = options[k];
           }
           break;
@@ -56,13 +60,19 @@ class cors {
         case 'allowEmptyReferer':
           this.allowEmptyReferer = !!options[k];
           break;
+        
+        //允许提交空referer的路由分组
+        case 'emptyRefererGroup':
+          if (typeof options[k] === 'string') options[k] = [ options[k] ];
+          if (Array.isArray(options[k])) this.emptyRefererGroup = options[k];
+          break;
 
         case 'referer':
           if (options[k] === '*') {
             this[k] = '*';
           } else {
             if (typeof options[k] === 'string') options[k] = [ options[k] ];
-            if (options[k] instanceof Array) this[k] = options[k];
+            if (Array.isArray(options[k])) this[k] = options[k];
           }
           break;
 
@@ -101,20 +111,78 @@ class cors {
       this.methodString = this.methods;
     }
 
+    this.allowTable = {};
+    //记录是否用于referer检测。
+    this.refererTable = {};
+
+    if (Array.isArray(this.allow)) {
+        let lastSlash = 0;
+        let midIndex, midChar, host, useForReferer;
+
+        for (let aw of this.allow) {
+            useForReferer = true;
+
+            if (!aw) continue;
+
+            if (typeof aw === 'string') host = aw.trim();
+            else if (typeof aw === 'object') {
+              host = aw.url || '';
+              useForReferer = !!aw.referer;
+            }
+
+            if (!host) continue;
+
+            lastSlash = host.length - 1;
+            while(host[lastSlash] === '/' && lastSlash > 0) lastSlash--;
+
+            //不允许 / 结尾。
+            if (lastSlash < host.length - 1) host = host.substring(0, lastSlash+1);
+            if (!host.trim()) continue;
+
+            midIndex = parseInt(host.length / 2);
+            midChar = host[midIndex];
+
+            this.allowTable[host] = {
+              length: host.length,
+              last: host[host.length - 1],
+              midIndex: midIndex,
+              midChar: midChar,
+              slashIndex: host.indexOf('/', 8),
+              referer: useForReferer
+            };
+
+            if (useForReferer) this.refererTable[host] = this.allowTable[host];
+        }
+
+        this.allow = Object.keys(this.allowTable);
+    }
+
   }
 
   checkOrigin (url) {
-    if (this.allow.indexOf(url) >= 0) return true;
-
-    return false;
+    return this.allowTable[url] ? true : false;
   }
 
-  checkReferer (url) {
+  checkReferer(url) {
     if (this.allow === '*') return true;
 
-    for (let r of this.allow) {
-      if (url.indexOf(r) === 0) return true;
+    let aobj
+    let ulen = url.length
+
+    for (let u in this.refererTable) {
+      aobj = this.refererTable[u];
+      //允许的referer长度比真实的值要短，所以超过的必然不是，如果最后一个字符不匹配可以直接跳过。
+      if (aobj.length > ulen || url[aobj.length - 1] !== aobj.last) continue;
+
+      if (url[aobj.midIndex] !== aobj.midChar) continue;
+      
+      if (aobj.slashIndex > 0 && url[aobj.slashIndex] !== '/') continue;
+
+      //substring 之后 判等 比 indexOf 要慢。
+      if (url.indexOf(u) === 0) return true;
     }
+
+    return false;
   }
 
   /**
@@ -128,10 +196,10 @@ class cors {
     let self = this;
 
     return async (c, next) => {
-
+       //使用c.box.corsAllow控制，给中间件处理留出扩展空间。
       //跨域请求，必须存在origin。
       if (c.headers.origin) {
-          if (self.allow === '*' || self.checkOrigin(c.headers.origin)) {
+          if (self.allow === '*' || self.allowTable[c.headers.origin] || c.box.corsAllow) {
             c.setHeader('access-control-allow-origin', '*');
             c.setHeader('access-control-allow-methods', self.methodString);
             c.setHeader('access-control-allow-headers', self.allowHeaders);
@@ -155,12 +223,18 @@ class cors {
          */
         //有一种情况，直接返回的页面并不具备referer，所以前端页面的请求不能有跨域扩展。
         //直接通过file方式进行，也不会有referer。
+        //如果referer前缀就是host说明是本网站访问
 
         //非跨域请求，或仅仅是没有携带origin
         let referer = c.headers.referer || '';
         
-        //处理同源请求。要求allow配置为 * 或使用数组配置必须包含返回页面应用的host。
-        if ((!referer && self.allowEmptyReferer) || (referer && self.checkReferer(referer)) ) {
+        //处理同源请求。允许提交空的referer或者允许某些路由分组可以提交空referer(针对前端页面)
+        //或者是检测到c.box.corsAllow，host和referer都是客户端的控制，检测必须要依赖服务端对host的配置。
+        if ((!referer 
+              && (self.allowEmptyReferer 
+                || (self.emptyRefererGroup && self.emptyRefererGroup.indexOf(c.group) >= 0)) )
+            || c.box.corsAllow || (referer && self.checkReferer(referer)) )
+        {
           if (c.method === 'OPTIONS') {
             c.status(204);
             self.optionsCache && c.setHeader('access-control-max-age', self.optionsCache);
