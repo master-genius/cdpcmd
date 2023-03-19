@@ -286,6 +286,42 @@ app.options('/*', async c => {})
 
 ```
 
+### 关于跨域的其他选项和说明
+
+在真实开发测试中，面对的问题比较复杂，有的应用在跨域过程中没有提交origin消息头，比如小程序就是。有的referer和origin都没有，还有很多工具寄希望设置referer为空绕过检测。而且直接浏览器访问就是没有referer的。
+
+cors扩展尽管是对跨域的场景，但是在具备origin消息头的跨域通信和referer资源引入场景都做了支持，并且你可以灵活选择和配置。
+
+**完整配置示例**
+
+```javascript
+
+let cr = new cors({
+  //不允许referer为空
+  allowEmptyReferer: false,
+
+  //允许referer为空的路由分组，
+  //分组名称是自定义的，参考titbit框架的路由分组功能。
+  //此功能主要用于在API开发中还要兼顾页面的服务上。
+  emptyRefererGroup: [
+    '@webapp', '@pages'
+  ],
+
+  allow: [
+     //默认的字符串形式表示origin跨域和referer外链接引用都被允许
+    'https://w.a.com',
+    'https://w.x.cn',
+
+    {url: 'https://servicewechat.com/wx234hiohr23', referer: true},
+    //不应用于referer检测，就是说如果有请求提交了referer为self-define不会通过检测
+    {url: 'self-define', referer: false}
+  ],
+
+})
+
+```
+
+
 ## realip(解析真实IP)
 
 在代理模式下，获取真实的客户端IP地址，常见的比如使用nginx作为反向代理，或者使用node自身作为代理，这时候后端的服务是代理服务请求并转发的，获取的IP地址永远都是代理服务的，而不是真实的客户端IP地址。

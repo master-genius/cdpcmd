@@ -9,6 +9,8 @@ class mixlogger {
       return true
     }
 
+    this.quiet = true
+
     for (let k in options) {
       switch(k) {
         case 'logHandle':
@@ -17,6 +19,9 @@ class mixlogger {
           }
           break
 
+        case 'quiet':
+          this.quiet = !!options[k]
+          break
       }
     }
 
@@ -28,14 +33,19 @@ class mixlogger {
       return
     }
 
-    if (app.daeMsgEvent['_log'] === undefined) {
-      console.error(`Warning: mixlogger must be running in daemon mode`)
+    //版本兼容
+    let mse = app.daeMsgEvent ? app.daeMsgEvent : app.msgEvent
+
+    if (mse['_log'] === undefined) {
+      if (!this.quiet) {
+        return console.error(`Warning: mixlogger must be running in daemon mode`)
+      }
       return
     }
 
     let self = this
 
-    let org_log = app.daeMsgEvent['_log'].callback
+    let org_log = mse['_log'].callback
 
     let log_handle = (w, msg, handle) => {
       if (false === self.logHandle(w, msg, handle) ) {
@@ -51,3 +61,4 @@ class mixlogger {
 }
 
 module.exports = mixlogger
+
