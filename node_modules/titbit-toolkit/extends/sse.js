@@ -277,7 +277,7 @@ class sse {
       })
 
       //http2协议需要设置session超时，否则如果默认的服务超时设置比self.timeout短，会导致无法收到消息。
-      if (ctx.major == 2) {
+      if (ctx.major == 2 && ctx.reply.session && ctx.reply.session.listenerCount) {
         //http2的session会保持连接，如果stream超时关闭后，session可能会维持连接，此时有可能会复用session。
         if (ctx.reply.session.listenerCount('timeout') < 2) {
           ctx.reply.session.setTimeout(self.timeout, () => {})

@@ -92,7 +92,12 @@ handle_config () {
             fi
             rm "$CDPC_CONFIG/$2"
             ;;
-
+        list)
+            CFGLIST=`ls $CDPC_CONFIG`
+            for c in $CFGLIST ; do
+                echo $c
+            done
+            ;;
         show)
             CFGLIST=`ls $CDPC_CONFIG`
             for c in $CFGLIST ; do
@@ -105,7 +110,8 @@ handle_config () {
 }
 
 handle_app () {
-    echo "$ARGS" > $CDPC_WATCH/$1
+    TM_LABEL=`date`
+    echo "$ARGS@$TM_LABEL" > $CDPC_WATCH/$1
 }
 
 handle_webserver () {
