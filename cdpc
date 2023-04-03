@@ -3,7 +3,7 @@
 ME=`whoami`
 
 CDPC_DIR=/usr/local/cdpc
-CDPC_WATCH=/tmp/cdpc_watch
+CDPC_WATCH=/tmp/cdpcd_watch
 CDPC_LOADINFO=/tmp/cdpcd-load.log
 CDPC_LOGDIR="$CDPC_DIR/logs"
 CDPC_UAUTH="$CDPC_DIR/uauth"

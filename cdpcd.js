@@ -25,7 +25,7 @@ function try_mkdir (dname) {
 
 let config_path = `${__dirname}/config`;
 let loadfile = '/tmp/cdpcd-load.log';
-let event_dir = '/tmp/cdpc_watch';
+let event_dir = '/tmp/cdpcd_watch';
 let logfile = `${__dirname}/logs/cdpcd.log`;
 let pidfile = '/tmp/cdpcd-pid';
 let logdir = __dirname + '/logs';
