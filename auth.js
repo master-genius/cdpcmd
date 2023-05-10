@@ -9,6 +9,8 @@ if (process.geteuid() > 0) {
 const fs = require('fs')
 const getuser = require('./lib/getuser')
 
+let watchPath = '/tmp/cdpcd_watch'
+
 try {
   fs.accessSync('./uauth')
 } catch (err) {
@@ -78,7 +80,7 @@ function authUser (uname) {
   
         fs.writeFileSync(ucfgpath, ucfg, {encoding: 'utf8'});
   
-        fs.writeFileSync(`/tmp/cdpc_watch/load`, ucfgpath, {encoding: 'utf8'});
+        fs.writeFileSync(`${watchPath}/load`, ucfgpath, {encoding: 'utf8'});
   
       } catch (err) {
         console.error(err)
@@ -91,7 +93,7 @@ function authUser (uname) {
       try {
         fs.unlinkSync(`./uauth/${au.user}`)
         fs.unlinkSync(ucfgpath)
-        fs.writeFileSync('/tmp/cdpc_watch/remove', `cdpcd-${au.user}`)
+        fs.writeFileSync(`${watchPath}/remove`, `cdpcd-${au.user}`)
       } catch (err) {
         console.error(err)
         return false
