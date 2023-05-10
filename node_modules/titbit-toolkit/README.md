@@ -420,7 +420,13 @@ let hostcfg = {
 
         {
             path : '/',
-            url : 'http://localhost:8004'
+            url : 'http://localhost:8004',
+            rewrite: (ctx, path) => {
+              //自定义重写路由规则
+              if (path.indexOf('/xyz') === 0) {
+                return path.replace('/xyz', '/w')
+              }
+            }
         }
     ]
 
@@ -432,7 +438,10 @@ const app = new titbit({
 
 const pxy = new proxy({
     timeout: 10000,
-    host : hostcfg
+    host : hostcfg,
+    connectOptions: {
+      //连接选项，参考http.request文档
+    }
 })
 
 pxy.init(app)

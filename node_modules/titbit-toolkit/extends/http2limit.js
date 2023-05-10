@@ -85,7 +85,7 @@ class stmlimit {
     let tm = Date.now();
     
     if (this.socketLife > 0 && (s.startTime + this.socketLife) < tm) {
-      return false;
+      return null;
     }
 
     if ( (s.time + this.timeSlice) > tm ) {
@@ -110,7 +110,12 @@ class stmlimit {
         });
 
         session.on('stream', stm => {
-          if (!this.checkAndSet(id)) {
+          let st = this.checkAndSet(id);
+          if (st === null) {
+            session.close(() => {
+              !session.destroyed && session.destroy();
+            });
+          } else if (!st) {
             session.destroy();
           }
         });

@@ -45,8 +45,14 @@ class proxy {
 
     this.addIP = false;
 
+    this.debug = false;
+
     //记录定时器
     this.proxyIntervals = {};
+
+    this.connectOptions = {
+      family: 4
+    };
 
     this.error = {
       '502' : `<!DOCTYPE html><html>
@@ -101,7 +107,8 @@ class proxy {
           break;
       
         case 'full':
-          this.full = options[k] ? true : false;
+        case 'debug':
+          this.full = !!options[k];
           break;
 
         case 'timeout':
@@ -112,6 +119,12 @@ class proxy {
 
         case 'addIP':
           this.addIP = options[k];
+          break;
+
+        case 'connectOptions':
+          if (options[k] && typeof options[k] === 'object') {
+            for (let o in options[k]) this.connectOptions[o] = options[k][o];
+          }
           break;
 
         default:;
@@ -226,7 +239,15 @@ class proxy {
           aliveCheckInterval : 5,
           aliveCheckPath : '/',
           intervalCount : 0,
+          rewrite: (tmp.rewrite && typeof tmp.rewrite === 'function') ? tmp.rewrite : null,
+          connectOptions: {...this.connectOptions}
         };
+
+        if (tmp.connectOptions && typeof tmp.connectOptions) {
+          for (let o in tmp.connectOptions) {
+            backend_obj.connectOptions[o] = tmp.connectOptions[o];
+          }
+        }
 
         if (tmp.headers !== undefined) {
           for (let h in tmp.headers) {
@@ -275,8 +296,8 @@ class proxy {
   }
 
   parseUrl (url) {
-    var u = new urlparse.URL(url);
-    var urlobj = {
+    let u = new urlparse.URL(url);
+    let urlobj = {
       hash :    u.hash,
       hostname :  u.hostname,
       protocol :  u.protocol,
@@ -400,8 +421,7 @@ class proxy {
       
       if (self.hostProxy[host]===undefined || self.hostProxy[host][c.routepath]===undefined) {
         if (self.full) {
-          c.send(self.error['502'], 502);
-          return;
+          return c.status(502).send(self.error['502']);
         }
         return await next();
       }
@@ -409,8 +429,11 @@ class proxy {
       let pr = self.getBackend(c, host);
 
       if (pr === null) {
-        c.send(self.error['503'], 503);
-        return;
+        await new Promise((rv, rj) => {setTimeout(rv, 100)});
+        pr = self.getBackend(c, host);
+
+        if (pr === null)
+          return c.status(503).send(self.error['503']);
       }
 
       let urlobj = self.copyUrlobj(pr.urlobj);
@@ -426,6 +449,23 @@ class proxy {
       }
 
       let hci = urlobj.protocol == 'https:' ? https : http;
+
+      for (let k in pr.connectOptions) {
+        urlobj[k] = pr.connectOptions[k];
+      }
+
+      if (pr.rewrite) {
+        let rw = pr.rewrite(c, c.request.url);
+        
+        if (rw) {
+          let path_typ = typeof rw;
+          if (path_typ === 'string') {
+            urlobj.path = rw;
+          } else if (path_typ === 'object' && rw.redirect) {
+            return c.setHeader('location', rw.redirect);
+          }
+        }
+      }
 
       let h = hci.request(urlobj);
 
@@ -469,7 +509,8 @@ class proxy {
         });
     
       }).catch(err => {
-        c.send(self.error['503'], 503);
+        self.debug && console.error(err);
+        c.status(503).send(self.error['503']);
       });
 
     };
@@ -487,6 +528,10 @@ class proxy {
       h = https;
       opts.rejectUnauthorized = false;
       opts.requestCert = false;
+    }
+
+    for (let o in pxy.connectOptions) {
+      opts[o] = pxy.connectOptions[o];
     }
 
     let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`;
@@ -521,7 +566,6 @@ class proxy {
     let self = this;
 
     return setInterval(() => {
-
       for (let i = 0; i < pxys.length; i++) {
         if (pxys[i].aliveCheckInterval <= 0) continue;
 
