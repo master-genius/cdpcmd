@@ -33,6 +33,26 @@ let error_503_text = `<!DOCTYPE html><html>
       </body>
   </html>` 
 
+function fmtpath (path) {
+  path = path.trim()
+  if (path.length == 0) {
+    return '/*'
+  }
+
+  if (path[0] !== '/') {
+    path = `/${path}`
+  }
+
+  if (path.length > 1 && path[path.length - 1] !== '/') {
+    path = `${path}/`
+  }
+
+  if (path.indexOf('/:') >= 0) {
+    return path.substring(0, path.length-1)
+  }
+
+  return `${path}*`
+}
 
 let hiiproxy = function (options = {}) {
   
@@ -65,10 +85,18 @@ let hiiproxy = function (options = {}) {
 
   this.config = {}
 
+  this.connectOptions = {
+    family: 4
+  }
+
   for (let k in options) {
     switch (k) {
       case 'config':
         this.config = options[k]
+        break
+
+      case 'starPath':
+        this.starPath = !!options[k]
         break
 
       case 'maxBody':
@@ -77,6 +105,12 @@ let hiiproxy = function (options = {}) {
       case 'full':
       case 'debug':
         this[k] = options[k]
+        break
+
+      case 'connectOptions':
+        if (options[k] && typeof options[k] === 'object') {
+          for (let a in options[k]) this.connectOptions[a] = options[k][a]
+        }
         break
     }
   }
@@ -104,6 +138,12 @@ hiiproxy.prototype.checkConfig = function (tmp, k) {
 
   if (tmp.path === undefined) {
     tmp.path = '/'
+  }
+
+  tmp.path = tmp.path.trim().replace(/(\/){2,}/g, '/')
+
+  if (tmp.path.length > 2 && tmp.path[tmp.path.length - 1] === '/') {
+    tmp.path = tmp.substring(0, tmp.path.length-1)
   }
 
   if (tmp.url === undefined) {
@@ -154,6 +194,9 @@ hiiproxy.prototype.checkAndSetConfig = function (backend_obj, tmp) {
   if (tmp.timeout !== undefined && typeof tmp.timeout === 'number')
     backend_obj.timeout = tmp.timeout
 
+  if (tmp.rewrite && typeof tmp.rewrite === 'function')
+    backend_obj.rewrite = tmp.rewrite
+
 }
 
 hiiproxy.prototype.setHostProxy = function (cfg) {
@@ -181,6 +224,8 @@ hiiproxy.prototype.setHostProxy = function (cfg) {
         url : tmp.url,
         headers : null,
         path : tmp.path,
+        pathLength: tmp.path.length,
+        rewrite: false,
         weight: 1,
         weightCount : 0,
         alive : true,
@@ -188,17 +233,24 @@ hiiproxy.prototype.setHostProxy = function (cfg) {
         max: 100,
         debug: this.debug,
         h2Pool: null,
-        timeout: this.timeout
+        timeout: this.timeout,
+        connectOptions: {...this.connectOptions}
       }
+
+      if (tmp.connectOptions && typeof tmp.connectOptions === 'object') {
+        for (let o in tmp.connectOptions) {
+          backend_obj.connectOptions[o] = tmp.connectOptions[o]
+        }
+      }
+
+      backend_obj.connectOptions.keepalive = true
+      backend_obj.connectOptions.max = backend_obj.max
+      backend_obj.connectOptions.reconnDelay = backend_obj.reconnDelay
+      backend_obj.connectOptions.debug = backend_obj.debug
 
       this.checkAndSetConfig(backend_obj, tmp)
 
-      backend_obj.h2Pool = h2cli.connectPool(backend_obj.url, {
-        keepalive: true,
-        max: backend_obj.max,
-        reconnDelay: backend_obj.reconnDelay,
-        debug: backend_obj.debug
-      })
+      backend_obj.h2Pool = h2cli.connectPool(backend_obj.url, backend_obj.connectOptions)
 
       if (this.hostProxy[k][pt] === undefined) {
         
@@ -331,12 +383,23 @@ hiiproxy.prototype.mid = function () {
     let hii = pr.h2Pool.getSession()
 
     try {
+      if (pr.headers) {
+        for (let k in pr.headers) c.headers[k] = pr.headers[k]
+      }
+
+      if (pr.rewrite) {
+        let rpath = pr.rewrite(c, c.headers[':path'])
+        if (rpath) {
+          let path_typ = typeof rpath
+          if (path_typ === 'object' && rpath.redirect) {
+            return c.setHeader('location', rpath.redirect)
+          } else if (path_typ === 'string') {
+            c.headers[':path'] = rpath
+          }
+        }
+      }
 
       await new Promise((rv, rj) => {
-
-        if (pr.headers) {
-          for (let k in pr.headers) c.headers[k] = pr.headers[k]
-        }
 
         let stm = hii.session.request(c.headers)
 
@@ -404,25 +467,5 @@ hiiproxy.prototype.init =function (app) {
 
 }
 
-function fmtpath (path) {
-  path = path.trim()
-  if (path.length == 0) {
-    return '/*'
-  }
-
-  if (path[0] !== '/') {
-    path = `/${path}`
-  }
-
-  if (path.length > 1 && path[path.length - 1] !== '/') {
-    path = `${path}/`
-  }
-
-  if (path.indexOf('/:') >= 0) {
-    return path.substring(0, path.length-1)
-  }
-
-  return `${path}*`
-}
 
 module.exports = hiiproxy

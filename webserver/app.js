@@ -60,19 +60,19 @@ const app = new titbit({
 })
 
 app.addService('appDir', __dirname)
-
-app.addService('appConfigDir', __dirname + '/../config')
-
 app.addService('configDir', __dirname + '/config')
+app.addService('serviceConfigDir', __dirname + '/../config')
 
 app.addService('certDir', cert_path)
 
-app.addService('certFile', `${server_name}.pem`)
+app.addService('certFile', [`${server_name}.crt`, `${server_name}.pem`])
 app.addService('keyFile', `${server_name}.key`)
 
 app.addService('apitkFile', `${app.service.configDir}/apitk`)
 
 app.addService('hostFile', `${app.service.configDir}/host`)
+
+app.addService('serverName', server_name)
 
 let config_state = true
 
@@ -133,3 +133,7 @@ try {
 }
 
 app.run(10101, args.host)
+
+process.on('message', (msg, handle) => {
+  
+})

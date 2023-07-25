@@ -109,9 +109,71 @@ handle_config () {
     esac
 }
 
+out_app_state() {
+    __CHECK_COUNT=0
+    _CUR_STATE_FILE="$CDPC_WATCH/state/$2"
+    #按照预期的结果进行检测
+    case $1 in
+        start|resume)
+            while sleep 0.15 ; do
+                let __CHECK_COUNT+=1
+                if [ -f "$_CUR_STATE_FILE" ] ; then
+                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
+                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^running'`
+                    if [ -n "$MATCH_STATE" ] ; then
+                        echo "$2 $APP_STATE_TEXT"
+                        break
+                    fi
+                fi
+
+                if [ "$__CHECK_COUNT" -gt 99 ] ; then
+                    break
+                fi
+            done
+            ;;
+
+        stop)
+            while sleep 0.15 ; do
+                let __CHECK_COUNT+=1
+                if [ -f "$_CUR_STATE_FILE" ] ; then
+                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
+                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^exit'`
+                    if [ -n "$MATCH_STATE" ] ; then
+                        echo "$2 stoped"
+                        break
+                    fi
+                fi
+
+                if [ "$__CHECK_COUNT" -gt 99 ] ; then
+                    break
+                fi
+            done
+            ;;
+
+        remove)
+            while sleep 0.15 ; do
+                let __CHECK_COUNT+=1
+                if [ ! -f "$_CUR_STATE_FILE" ] ; then
+                    echo "$2 removed"
+                    break
+                fi
+
+                if [ "$__CHECK_COUNT" -gt 99 ] ; then
+                    break
+                fi
+            done
+            ;;
+    esac
+}
+
 handle_app () {
-    TM_LABEL=`date`
-    echo "$ARGS@$TM_LABEL" > $CDPC_WATCH/$1
+    for a in $ARGS ; do
+        date > $CDPC_WATCH/$1/$a
+    done
+
+    for a in $ARGS ; do
+        out_app_state $1 $a
+    done
 }
 
 handle_webserver () {
@@ -136,7 +198,7 @@ handle_webserver () {
             ;;
     esac
 
-    echo cdpcd-web-server > $CDPC_WATCH/$1
+    echo cdpcd-web-server > $CDPC_WATCH/$1/cdpcd-web-server
 }
 
 handle_auth () {

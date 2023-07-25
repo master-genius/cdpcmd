@@ -3,6 +3,7 @@
 process.chdir(__dirname);
 
 const fs = require('fs');
+const fsp = fs.promises
 
 function try_mkdir (dname) {
   let dst = true
@@ -24,6 +25,7 @@ function try_mkdir (dname) {
 }
 
 let config_path = `${__dirname}/config`;
+let config_disabled_path = `${config_path}/disabled`;
 let loadfile = '/tmp/cdpcd-load.log';
 let event_dir = '/tmp/cdpcd_watch';
 let logfile = `${__dirname}/logs/cdpcd.log`;
@@ -38,6 +40,7 @@ if (euid > 0) {
   let local_path = `${process.env.HOME}/.local/cdpc`;
 
   config_path = `${local_path}/config`;
+  config_disabled_path = `${config_path}/disabled`;
   logdir = `${local_path}/logs`;
   
   loadfile = `${local_path}/cdpcd-load.log`;
@@ -51,6 +54,7 @@ if (euid > 0) {
 
   try_mkdir(local_path)
   try_mkdir(config_path)
+  try_mkdir(config_disabled_path)
   try_mkdir(event_dir)
 }
 
@@ -121,36 +125,94 @@ function postLog(msg, cm) {
   clog.log(msg)
 }
 
-process.on('message', (msg, handle) => {
-  if (msg.op) {
-      switch (msg.op) {
-        case 'restart':
-        case 'start':
-        case 'pause':
-        case 'stop':
-        case 'resume':
-          msg.name && cm[msg.op](msg.name);
-          break;
+async function set_disabled_state(op, name) {
+  let dfile = config_disabled_path + '/' + msg.name
 
-        //提交日志
-        case 'log':
-          postLog(msg, cm);
-          break;
-
-        case 'add':
-          addChildApp(msg, cm);
-          break;
-
-        case 'forceRemove':
-          msg.name && cm.remove(msg.name);
-          break;
-
-        case 'remove':
-          msg.name && cm.safeRemove(msg.name);
-          break;
-      }
+  if (op === 'disable' || op === 'disabled') {
+    await fsp.access(dfile)
+            .catch(err => {
+              fsp.writeFile(dfile, (new Date).toLocaleString(), {encoding: 'utf8'})
+                  .catch(err => {
+                    err && clog.log({
+                      type: 'error',
+                      ...err,
+                      errname: '--ERR-DISABLED-APP--'
+                    })
+                  })
+            })
+  } else {
+    await fsp.access(dfile)
+            .then(async () => {
+              await fsp.unlink(dfile)
+                        .catch(err => {
+                          return fsp.unlink(dfile)
+                        })
+                        .catch(err => {
+                          err && clog.log({
+                            type: 'error',
+                            ...err,
+                            errname: '--ERR-ENABLE-APP--'
+                          })
+                        })
+            })
+            .catch(err => {})
   }
-});
+}
+
+function webServerMessage(ch) {
+  ch.on('message', (msg, handle) => {
+    if (msg.op) {
+        switch (msg.op) {
+          case 'disable':
+          case 'enable':
+            set_disabled_state(msg.op, msg.name);
+  
+          case 'restart':
+          case 'start':
+          case 'pause':
+          case 'stop':
+          case 'resume':
+          case 'remove':
+            msg.name && cm[msg.op](msg.name);
+            break;
+  
+          //提交日志
+          case 'log':
+            postLog(msg, cm);
+            break;
+  
+          case 'add':
+            addChildApp(msg, cm);
+            break;
+  
+          case 'forceRemove':
+            msg.name && cm.remove(msg.name);
+            break;
+  
+          case 'remove':
+            msg.name && cm.safeRemove(msg.name);
+            break;
+        }
+    }
+  });
+}
+
+let webServer = {
+  name: 'cdpcd-web-server',
+  file: __dirname + '/webserver/app.js',
+  restart: 'always',
+  restartDelay: 500,
+  monitor: true,
+  lockReload: true,
+  options: {
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc']
+  },
+  callback: webServerMessage
+}
+
+if (process.geteuid() === 0) {
+  cm.runChilds([webServer])
+}
 
 cm.loadConfig();
 
