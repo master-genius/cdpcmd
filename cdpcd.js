@@ -114,7 +114,7 @@ cm.strong();
 
 function addChildApp (msg, cm) {
   if (msg.config) {
-    if (msg.config instanceof Array)
+    if (Array.isArray(msg.config))
         cm.runChilds(msg.config);
     else
         cm.runChilds([ msg.config ]);
