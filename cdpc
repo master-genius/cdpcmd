@@ -109,6 +109,28 @@ handle_config () {
     esac
 }
 
+check_has_app() {
+    __HAS_COUNT=0
+    _APP_HANDLE_DIR="$CDPC_WATCH/$1"
+    _APP_HANDLE_FILE="$_APP_HANDLE_DIR/$2"
+    
+    if [ ! -d "$_APP_HANDLE_DIR" ] ; then
+        return 0
+    fi
+
+    while sleep 0.1 ; do
+        if [ ! -f "$_APP_HANDLE_FILE" ] ; then
+            echo "$a not found!!"
+            exit 1
+        fi
+        
+        let _HAS_COUNT+=1
+        if [ "$_HAS_COUNT" -gt 15 ] ; then
+            break
+        fi
+    done
+}
+
 out_app_state() {
     __CHECK_COUNT=0
     _CUR_STATE_FILE="$CDPC_WATCH/state/$2"
@@ -197,6 +219,23 @@ out_app_state() {
                 fi
             done
             ;;
+        pause)
+            while sleep 0.15; do
+                let __CHECK_COUNT+=1
+                if [ -f "$_CUR_STATE_FILE" ] ; then
+                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
+                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^pause'`
+                    if [ -n "$MATCH_STATE" ] ; then
+                        echo "$2 pause..."
+                        break
+                    fi
+                fi
+
+                if [ "$__CHECK_COUNT" -gt 99 ] ; then
+                    break
+                fi
+            done
+            ;;
     esac
 }
 
@@ -206,6 +245,7 @@ handle_app () {
     done
 
     for a in $ARGS ; do
+        check_has_app $1 $a
         out_app_state $1 $a
     done
 }
