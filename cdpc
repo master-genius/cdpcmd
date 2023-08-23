@@ -131,7 +131,41 @@ out_app_state() {
                 fi
             done
             ;;
+        restart)
+          while sleep 0.1 ; do
+              let __CHECK_COUNT+=1
+              if [ -f "$_CUR_STATE_FILE" ] ; then
+                APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
+                MATCH_STATE=`cat $_CUR_STATE_FILE | grep '^exit'`
+                if [ -n "$MATCH_STATE" ] ; then
+                  echo "$2 $APP_STATE_TEXT"
+                  break
+                fi
+              fi
 
+              if [ "$__CHECK_COUNT" -gt 99 ] ; then
+                break
+              fi
+          done
+          
+          let __CHECK_COUNT=0
+
+          while sleep 0.1 ; do
+              let __CHECK_COUNT+=1
+              if [ -f "$_CUR_STATE_FILE" ] ; then
+                APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
+                MATCH_STATE=`cat $_CUR_STATE_FILE | grep '^running'`
+                if [ -n "$MATCH_STATE" ] ; then
+                  echo "$2 $APP_STATE_TEXT"
+                  break
+                fi
+              fi
+
+              if [ "$__CHECK_COUNT" -gt 123 ] ; then
+                break
+              fi
+          done
+          ;;
         stop)
             while sleep 0.15 ; do
                 let __CHECK_COUNT+=1
