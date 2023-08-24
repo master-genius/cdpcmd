@@ -1,0 +1,70 @@
+#!/bin/bash
+
+INSTALL_DIR='/usr/local/cdpc'
+
+IS_RUNNING=
+CDPCD_PID=
+
+is_running() {
+    IS_RUNNING=`ps -e -o ppid,comm,args | grep -E -i '^\s*1\s+node.+cdpcd'`
+    if [ -n "$IS_RUNNING" ] ; then
+        return 0
+    fi
+
+    return 1
+}
+
+get_cdpcd_pid() {
+    if [ -n "$IS_RUNNING" ] ; then
+        CDPCD_PID=`ps -e -o ppid,comm,pid,args | grep -E -i '^\s*1\s+node.+cdpcd' | awk -F ' ' '{printf $3}'`
+    fi
+}
+
+get_cdpcd_pid
+
+SUDO=''
+
+if [ "$EUID" -ne 0 ] ; then
+    SUDO='sudo'
+fi
+
+stop_serv() {
+    if is_running ; then
+        $SUDO kill -s SIGTERM $CDPCD_PID
+    fi
+    
+    sleep 0.5
+
+    if is_running ; then
+        get_cdpcd_pid
+        $SUDO kill -s SIGKILL -$CDPCD_PID
+    fi
+
+    return $?
+}
+
+start_serv() {
+    if ! is_running ; then
+        $SUDO node $INSTALL_DIR/cdpcd.js
+        return $?
+    else
+        return 0
+    fi
+}
+
+case $1 in
+    start)
+        start_serv
+        ;;
+
+    stop)
+        stop_serv
+        ;;
+
+    restart)
+        stop_serv && start_serv
+        ;;
+    *)
+        echo "Usage: $0 start|stop|restart"
+        ;;
+esac

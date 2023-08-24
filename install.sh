@@ -27,6 +27,36 @@ SYSTEMD_PATH=/lib/systemd/system
 
 INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js lib config"
 
+init_systemd_service() {
+    node makesystemd.js > tmp/$SYSTEMD_FILE
+
+    mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH
+    
+    systemctl daemon-reload
+    
+    IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE`
+
+    if [ "$IS_ENABLED" != "enabled" ] ; then
+        systemctl enable $SYSTEMD_FILE
+        systemctl start $SYSTEMD_FILE
+    fi
+}
+
+init_rc_service() {
+    #服务脚本复制到/etc/init.d，/etc/rc3.d 和 /etc/rc5.d创建符号链接
+    if [ ! -x "cdpc-rc-service" ] ; then
+        chmod +x cdpc-rc-service
+    fi
+
+    cp cdpc-rc-service /etc/init.d/cdpc
+
+    ln -s ../init.d/cdpc /etc/rc2.d/S03cdpc
+    ln -s ../init.d/cdpc /etc/rc3.d/S03cdpc
+    ln -s ../init.d/cdpc /etc/rc5.d/S03cdpc
+    
+    /etc/inid.d/cdpc start
+}
+
 install_cdpc () {
     
     cd $SELFDIR
@@ -65,21 +95,19 @@ install_cdpc () {
         cp -R "$SELFDIR/config/cert/*" "$WEB_SERVER_CERT_PATH/"
     fi
 
-    cp cdpc $CDPC_CMD_DIR
-
-    node makesystemd.js > tmp/$SYSTEMD_FILE
-
-    mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH
-    
-    systemctl daemon-reload
-    
-    IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE`
-
-    if [ "$IS_ENABLED" != "enabled" ] ; then
-        systemctl enable $SYSTEMD_FILE
-        systemctl start $SYSTEMD_FILE
+    if [ ! -x cdpc ] ; then
+        chmod +x cdpc
     fi
 
+    cp cdpc $CDPC_CMD_DIR
+
+    IS_SYSTEMD=`ps -e -o ppid,pid,comm | grep -E -i '^\s*0\s+1\s+systemd'`
+
+    if [ -n "$IS_SYSTEMD" ] ; then
+        init_systemd_service
+    else
+        init_rc_service
+    fi
 }
 
 if [ "$#" -gt 0 ] ; then
@@ -94,7 +122,7 @@ if [ "$#" -gt 0 ] ; then
 
 fi
 
-#ubuntu、debian、deepin、mint
+#ubuntu、debian、deepin、mint、mxlinux
 OSNAME="ubuntu"
 
 CHECK_NAME=`cat /etc/os-release | grep -E -i '^NAME=.*CentOS|^NAME=.*RedHat'`

@@ -99,6 +99,9 @@ clog.init().catch(err => {
   fs.writeFile('/tmp/cdpcd-temp.log', err.message, err => {});
 });
 
+/**
+ * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。
+ */
 const cm = new cdpc({
   //notExit: true,
   loadInfoFile: loadfile,
@@ -110,6 +113,7 @@ const cm = new cdpc({
   errorHandle: clog.errorLog.bind(clog)
 });
 
+//捕获所有异常，保证服务稳定运行。但是不会做信号监听处理。
 cm.strong();
 
 function addChildApp (msg, cm) {

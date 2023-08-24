@@ -1,5 +1,14 @@
 #!/bin/bash
 
+is_systemd() {
+    IS_SYSTEMD=`ps -e -o ppid,pid,comm | grep -E -i '^\s*0\s+1\s+systemd'`
+    if [ -n "$IS_SYSTEMD" ] ; then
+        return 0
+    fi
+
+    return 1
+}
+
 ME=`whoami`
 
 CDPC_DIR=/usr/local/cdpc
@@ -7,6 +16,12 @@ CDPC_WATCH=/tmp/cdpcd_watch
 CDPC_LOADINFO=/tmp/cdpcd-load.log
 CDPC_LOGDIR="$CDPC_DIR/logs"
 CDPC_UAUTH="$CDPC_DIR/uauth"
+
+SUDO=''
+
+if [ "$EUID" -ne 0 ] ; then
+    SUDO='sudo'
+fi
 
 if [ "$UID" -gt 0 ] ; then
 
@@ -454,6 +469,30 @@ case $1 in
         help
         ;;
     
+    'stop-service')
+        if is_systemd ; then
+            $SUDO systemctl stop cdpcd.service
+        else
+            $SUDO /etc/init.d/cdpc stop
+        fi
+        ;;
+
+    'start-service')
+        if is_systemd ; then
+            $SUDO systemctl start cdpcd.service
+        else
+            $SUDO /etc/init.d/cdpc start
+        fi
+        ;;
+
+    'restart-service')
+        if is_systemd ; then
+            $SUDO systemctl restart cdpcd.service
+        else
+            $SUDO /etc/init.d/cdpc restart
+        fi
+        ;;
+        
     *)
         printf "\x1b[2;36m使用cdpc help查看帮助文档\n\x1b[0m"
         echo "快速使用提示："
@@ -467,6 +506,9 @@ case $1 in
         echo "  cdpc resume  [应用名称] 恢复暂停的应用"
         echo "  cdpc restart [应用名称] 重启应用"
         echo "  cdpc auth 查看自己是否被授权/查看授权信息"
+        echo "  cdpc start-service 启动cdpcd服务"
+        echo "  cdpc stop-service 停止cdpcd服务"
+        echo "  cdpc restart-service 重启cdpcd服务"
         echo "示例："
         echo "  cdpc stop --all"
         echo "  cdpc restart app1 app2"
