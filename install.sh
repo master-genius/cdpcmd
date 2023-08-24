@@ -54,7 +54,7 @@ init_rc_service() {
     ln -s ../init.d/cdpc /etc/rc3.d/S03cdpc
     ln -s ../init.d/cdpc /etc/rc5.d/S03cdpc
     
-    /etc/inid.d/cdpc start
+    /etc/init.d/cdpc start
 }
 
 install_cdpc () {
