@@ -6,10 +6,10 @@
 
 const { spawn } = require('node:child_process')
 
-let ch = spawn('node', ['/usr/local/cdpc/cdpcd.js'], {
+let ch = spawn('/usr/local/bin/node', ['/usr/local/cdpc/cdpcd.js'], {
   cwd: '/usr/local/cdpc'
 })
 
 ch.unref()
 
-process.exit(0)
+//process.exit(0)
