@@ -9,9 +9,11 @@ const { spawn } = require('node:child_process')
 let ch = spawn(process.argv[0], ['/usr/local/cdpc/cdpcd.js'], {
   cwd: '/usr/local/cdpc',
   detached: true,
-  stdio: ['ignore', 1, 2]
+  stdio: 'ignore'
 })
 
 ch.unref()
 
-process.exit(0)
+setTimeout(() => {
+  process.exit(0)
+}, 500)

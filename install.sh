@@ -52,10 +52,10 @@ init_rc_service() {
 
     RC_DIR_LIST="rc2.d rc3.d rc5.d"
     for r in $RC_DIR_LIST ; do
-        if [ -f "/etc/$r/S03cdpc" ] ; then
-            rm "/etc/$r/S03cdpc"
+        if [ -f "/etc/$r/S07cdpc" ] ; then
+            rm "/etc/$r/S07cdpc"
         fi
-        ln -s ../init.d/cdpc "/etc/$r/S03cdpc"
+        ln -s ../init.d/cdpc "/etc/$r/S07cdpc"
     done
     
     /etc/init.d/cdpc start
