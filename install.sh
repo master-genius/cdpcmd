@@ -61,6 +61,8 @@ init_rc_service() {
     /etc/init.d/cdpc start
 }
 
+IS_SYSTEMD=`ps -e -o ppid,pid,comm | grep -E -i '^\s*0\s+1\s+systemd'`
+
 install_cdpc () {
     
     cd $SELFDIR
@@ -104,8 +106,6 @@ install_cdpc () {
     fi
 
     cp cdpc $CDPC_CMD_DIR
-
-    IS_SYSTEMD=`ps -e -o ppid,pid,comm | grep -E -i '^\s*0\s+1\s+systemd'`
 
     if [ -n "$IS_SYSTEMD" ] ; then
         init_systemd_service
@@ -178,7 +178,13 @@ if [ -z `which node` ] ; then
         echo "(Install Node.js failed, try again or install node.js by yourself.)"
         exit 1
     fi
-
+else
+    if [ -n "$IS_SYSTEMD" ] ; then
+        if [ ! -f "/usr/local/bin/node" ] ; then
+            NODE_WHERE=`which node`
+            ln -s $NODE_WHERE /usr/local/bin/node
+        fi
+    fi
 fi
 
 if [ "$CDPC_DIR" != "$SELFDIR" ] ; then
