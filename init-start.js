@@ -6,11 +6,14 @@
 
 const { spawn } = require('node:child_process')
 
-let ch = spawn(process.argv[0], ['/usr/local/cdpc/cdpcd.js'], {
+let ch = spawn(process.argv[0], ['/usr/local/cdpc/cdpcd.js', '--daemon'], {
   cwd: '/usr/local/cdpc',
-  detached: true
+  detached: true,
+  stdio: ['ignore', 1, 2]
 })
 
 ch.unref()
 
-process.exit(0)
+if (process.argv.indexOf('--daemon') < 0) {
+  process.exit(0)
+}
