@@ -42,7 +42,6 @@ stop_serv() {
 
 start_serv() {
     if ! is_running ; then
-        get_cdpcd_pid
         $SUDO setsid node $INSTALL_DIR/init-start.js
         return $?
     else
