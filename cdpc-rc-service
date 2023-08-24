@@ -42,7 +42,13 @@ stop_serv() {
 
 start_serv() {
     if ! is_running ; then
-        $SUDO node $INSTALL_DIR/init-start.js
+        #init在此运行脚本时，PATH环境变量只有/sbin /bin /usr/sbin /usr/bin
+        if [ -n `which node` ] ; then
+            $SUDO node $INSTALL_DIR/init-start.js
+        else
+            $SUDO /usr/local/bin/node $INSTALL_DIR/init-start.js
+        fi
+        
         return $?
     else
         return 0
