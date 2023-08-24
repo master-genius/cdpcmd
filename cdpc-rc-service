@@ -43,7 +43,8 @@ stop_serv() {
 
 start_serv() {
     if ! is_running ; then
-        $SUDO setsid node $INSTALL_DIR/cdpcd.js
+        #$SUDO setsid node $INSTALL_DIR/cdpcd.js
+        $SUDO setsid node $INSTALL_DIR/init-start.js
         return $?
     else
         return 0
