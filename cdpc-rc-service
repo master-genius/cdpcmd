@@ -6,7 +6,7 @@ IS_RUNNING=
 CDPCD_PID=
 
 is_running() {
-    IS_RUNNING=`ps -e -o ppid,comm,args | grep -E -i '^\s*1\s+node.+cdpcd'`
+    IS_RUNNING=`ps -e -o ppid,comm,args | grep -E -i '^\s*1\s+node.+cdpcd' | grep -v grep`
     if [ -n "$IS_RUNNING" ] ; then
         return 0
     fi
@@ -15,7 +15,7 @@ is_running() {
 }
 
 get_cdpcd_pid() {
-    CDPCD_PID=`ps -e -o ppid,comm,pid,args | grep -E -i '^\s*1\s+node.+cdpcd' | awk -F ' ' '{printf $3}'`
+    CDPCD_PID=`ps -e -o ppid,comm,pid,args | grep -E -i '^\s*1\s+node.+cdpcd' | grep -v grep | awk -F ' ' '{printf $3}'`
 }
 
 SUDO=''
