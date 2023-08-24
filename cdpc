@@ -469,7 +469,7 @@ case $1 in
         help
         ;;
     
-    'stop-service')
+    'service-stop')
         if is_systemd ; then
             $SUDO systemctl stop cdpcd.service
         else
@@ -477,7 +477,7 @@ case $1 in
         fi
         ;;
 
-    'start-service')
+    'service-start')
         if is_systemd ; then
             $SUDO systemctl start cdpcd.service
         else
@@ -485,14 +485,14 @@ case $1 in
         fi
         ;;
 
-    'restart-service')
+    'service-restart')
         if is_systemd ; then
             $SUDO systemctl restart cdpcd.service
         else
             $SUDO /etc/init.d/cdpc restart
         fi
         ;;
-        
+
     *)
         printf "\x1b[2;36m使用cdpc help查看帮助文档\n\x1b[0m"
         echo "快速使用提示："
