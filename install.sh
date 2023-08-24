@@ -179,11 +179,9 @@ if [ -z `which node` ] ; then
         exit 1
     fi
 else
-    if [ -n "$IS_SYSTEMD" ] ; then
-        if [ ! -f "/usr/local/bin/node" ] ; then
-            NODE_WHERE=`which node`
-            ln -s $NODE_WHERE /usr/local/bin/node
-        fi
+    if [ ! -f "/usr/local/bin/node" ] ; then
+        NODE_WHERE=`which node`
+        ln -s $NODE_WHERE /usr/local/bin/node
     fi
 fi
 
