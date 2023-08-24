@@ -50,9 +50,13 @@ init_rc_service() {
 
     cp cdpc-rc-service /etc/init.d/cdpc
 
-    ln -s ../init.d/cdpc /etc/rc2.d/S03cdpc
-    ln -s ../init.d/cdpc /etc/rc3.d/S03cdpc
-    ln -s ../init.d/cdpc /etc/rc5.d/S03cdpc
+    RC_DIR_LIST="rc2.d rc3.d rc5.d"
+    for r in $RC_DIR_LIST ; do
+        if [ -f "/etc/$r/S03cdpc" ] ; then
+            rm "/etc/$r/S03cdpc"
+        fi
+        ln -s ../init.d/cdpc "/etc/$r/S03cdpc"
+    done
     
     /etc/init.d/cdpc start
 }
