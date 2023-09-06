@@ -179,7 +179,7 @@ if [ -z `which node` ] ; then
         exit 1
     fi
 else
-    if [ ! -f "/usr/local/bin/node" ] ; then
+    if [ ! -L "/usr/local/bin/node" ] ; then
         NODE_WHERE=`which node`
         ln -s $NODE_WHERE /usr/local/bin/node
     fi

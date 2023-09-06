@@ -113,8 +113,22 @@ const cm = new cdpc({
   errorHandle: clog.errorLog.bind(clog)
 });
 
+
+if (euid === 0) {
+  let os = require('os')
+  let totalmem = os.totalmem()
+
+  cm.cgroup.create('cdpcd-user-auth-limit', {
+    cpu: [9850, 10000],
+    memory: parseInt(totalmem * 0.8)
+  })
+}
+
 //捕获所有异常，保证服务稳定运行。但是不会做信号监听处理。
 cm.strong();
+
+cm.setStepSlice(20);
+cm.setMaxStep(45, 60);
 
 function addChildApp (msg, cm) {
   if (msg.config) {
@@ -220,4 +234,5 @@ if (process.geteuid() === 0) {
 
 cm.loadConfig();
 
+//步进50，定时器20毫秒，每隔1秒获取一次负载信息
 cm.monitorStart();

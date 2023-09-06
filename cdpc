@@ -126,24 +126,19 @@ handle_config () {
 
 check_has_app() {
     __HAS_COUNT=0
-    _APP_HANDLE_DIR="$CDPC_WATCH/$1"
-    _APP_HANDLE_FILE="$_APP_HANDLE_DIR/$2"
+    _APP_STATE_DIR="$CDPC_WATCH/state"
+    _APP_STATE_FILE="$_APP_STATE_DIR/$1"
     
-    if [ ! -d "$_APP_HANDLE_DIR" ] ; then
-        return 0
+    if [ ! -d "$_APP_STATE_DIR" ] ; then
+        return 1
     fi
 
-    while sleep 0.1 ; do
-        if [ ! -f "$_APP_HANDLE_FILE" ] ; then
-            echo "$a not found!!"
-            exit 1
-        fi
-        
-        let _HAS_COUNT+=1
-        if [ "$_HAS_COUNT" -gt 15 ] ; then
-            break
-        fi
-    done
+    if [ ! -f "$_APP_STATE_FILE" ] ; then
+        echo "$1 not found!!"
+        return 1
+    fi
+
+    return 0
 }
 
 out_app_state() {
@@ -260,7 +255,7 @@ handle_app () {
     done
 
     for a in $ARGS ; do
-        check_has_app $1 $a
+        check_has_app $a
         out_app_state $1 $a
     done
 }
@@ -407,6 +402,14 @@ case $1 in
                 done
             fi
         fi
+        ;;
+
+    has)
+        for a in $ARGS ; do
+            if check_has_app $a ; then
+                echo "has $a"
+            fi
+        done
         ;;
     
     #start stop restart

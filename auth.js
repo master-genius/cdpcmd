@@ -62,6 +62,7 @@ function authUser (uname) {
           name : 'cdpcd-${au.user}',
           args: ['--uid', ${au.uid}],
           file : '${__dirname}/cdpcd.js',
+          cgroup: 'cdpcd-user-auth-limit',
           options: {
             uid: ${au.uid},
             gid: ${au.gid},
@@ -93,7 +94,7 @@ function authUser (uname) {
       try {
         fs.unlinkSync(`./uauth/${au.user}`)
         fs.unlinkSync(ucfgpath)
-        fs.writeFileSync(`${watchPath}/remove`, `cdpcd-${au.user}`)
+        fs.writeFileSync(`${watchPath}/remove/cdpcd-${au.user}`, `${Date.now()}`)
       } catch (err) {
         console.error(err)
         return false
