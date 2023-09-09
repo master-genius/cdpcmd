@@ -117,10 +117,21 @@ const cm = new cdpc({
 if (euid === 0) {
   let os = require('os')
   let totalmem = os.totalmem()
+  let totalCPU = os.cpus().length
+
+  let maxPids = 'max'
+  if (totalCPU <= 2) {
+    maxPids = 30
+  } else if (totalCPU <= 8) {
+    maxPids = 100
+  } else if (totalCPU <= 32) {
+    maxPids = 500
+  }
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [9850, 10000],
-    memory: parseInt(totalmem * 0.8)
+    memory: parseInt(totalmem * 0.75),
+    pids: maxPids
   })
 }
 
