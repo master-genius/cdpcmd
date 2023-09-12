@@ -36,7 +36,13 @@ function fmtLoadText (ld) {
     text += ` Name: ${ch.name}\n`
     text += ` Args: ${ch.args.join(' ')}\n`
     text += ` Stat: ${stateColor(ch.state)}\n`
-    text += ` ·PID: ${ch.pid}  CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n\n`
+    text += ` ·PID: ${ch.pid}  CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n`
+    
+    if (ch.net) {
+      text += ` ·NET[receive: ${ch.net.recvBytes}, transmit: ${ch.net.transmitBytes}]\n`
+    }
+
+    text += '\n'
   }
 
   return text

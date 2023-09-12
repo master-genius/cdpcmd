@@ -233,6 +233,7 @@ let webServer = {
   restartDelay: 500,
   monitor: true,
   lockReload: true,
+  monitorNetData: true,
   options: {
     stdio: ['ignore', 'ignore', 'ignore', 'ipc']
   },
