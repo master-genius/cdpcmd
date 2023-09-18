@@ -130,7 +130,8 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [9850, 10000],
-    memory: parseInt(totalmem * 0.75),
+    //实测发现单位为KB
+    memory: parseInt(totalmem * 0.82 / 1000),
     pids: maxPids
   })
 }
