@@ -9,6 +9,6 @@
     "titbit-httpc": "^2.0.4",
     "titbit-loader": "^22.5.2",
     "titbit-token": "^2.1.2",
-    "titbit-toolkit": "^3.5.1"
+    "titbit-toolkit": "^3.5.3"
   }
 }
