@@ -15,13 +15,21 @@ Alias=cdpcd.service
 
 */
 
+const fs = require('fs')
 
 function fmtSystemd (options) {
   let text = ''
 
   if (!options || options.toString() !== '[object Object]') options = {}
 
-  if (!options.command) options.command = '/usr/local/bin/node'
+  if (!options.command) {
+    try {
+      fs.accessSync('/usr/local/bin/node')
+      options.command = '/usr/local/bin/node'
+    } catch (err) {
+      options.command = '/usr/bin/node'
+    }
+  }
 
   if (!options.file) options.file = '/usr/local/cdpc/cdpcd.js'
   
