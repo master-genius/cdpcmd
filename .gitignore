@@ -1,6 +1,9 @@
 /tmp/
 /webserver/config/
-/node_modules/**/images
-/node_modules/**/test
+/node_modules/**/images/
+/node_modules/**/test/
 /node_modules/**/README.md
+/node_modules/**/demo/
+/node_modules/**/*.jpg
+/node_modules/**/*.png
 
