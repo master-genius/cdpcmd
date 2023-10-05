@@ -130,8 +130,7 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [9850, 10000],
-    //实测发现单位为KB
-    memory: parseInt(totalmem * 0.82 / 1000),
+    memory: parseInt(totalmem * 0.82),
     pids: maxPids
   })
 }
@@ -242,10 +241,13 @@ let webServer = {
 }
 
 if (process.geteuid() === 0) {
-  cm.runChilds([webServer])
+  setTimeout(() => {
+    cm.runChilds([webServer]);
+    cm.loadConfig();
+    cm.monitorStart();
+  }, 200);
+} else {
+  cm.loadConfig();
+  //步进50，定时器20毫秒，每隔1秒获取一次负载信息
+  cm.monitorStart();
 }
-
-cm.loadConfig();
-
-//步进50，定时器20毫秒，每隔1秒获取一次负载信息
-cm.monitorStart();
