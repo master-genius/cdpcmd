@@ -2,7 +2,7 @@
   "dependencies": {
     "cdpc": "^4.1.2",
     "gohttp": "^5.0.3",
-    "npargv": "^1.0.7",
+    "npargv": "^1.0.9",
     "options-check": "^1.0.1",
     "thread-worker": "^1.0.1",
     "titbit": "^23.2.4",

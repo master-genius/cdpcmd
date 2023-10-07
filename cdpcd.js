@@ -32,7 +32,7 @@ let logfile = `${__dirname}/logs/cdpcd.log`;
 let pidfile = '/tmp/cdpcd-pid';
 let logdir = __dirname + '/logs';
 
-let preg = /node.*cdpcd\.js/i;
+let preg = /node.*\/usr\/local\/cdpc\/cdpcd\.js/i;
 
 let euid = process.geteuid();
 
@@ -50,7 +50,7 @@ if (euid > 0) {
 
   pidfile = `${local_path}/cdpcd-pid`;
 
-  preg = new RegExp(`node.*cdpcd\.js.*--uid.*${euid}`);
+  preg = new RegExp(`node.*\/usr\/local\/cdpc\/cdpcd\.js.*--uid.*${euid}`);
 
   try_mkdir(local_path)
   try_mkdir(config_path)
