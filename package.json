@@ -9,6 +9,7 @@
     "titbit-httpc": "^2.0.4",
     "titbit-loader": "^22.5.3",
     "titbit-token": "^2.1.2",
-    "titbit-toolkit": "^3.5.3"
+    "titbit-toolkit": "^3.5.3",
+    "zipdata": "^1.0.2"
   }
 }
