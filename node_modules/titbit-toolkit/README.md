@@ -229,9 +229,8 @@ app.use( new tofile() )
 app.post('/upload', async c => {
     let f = c.getFile('image')
 
-    if (f === null) {
-        c.status(400)
-        return
+    if (!f) {
+        return c.status(400).send('image file not found')
     }
 
     //把文件移动到images目录，此目录可能需要手动创建。
