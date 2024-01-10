@@ -138,8 +138,8 @@ if (euid === 0) {
 //捕获所有异常，保证服务稳定运行。但是不会做信号监听处理。
 cm.strong();
 
-cm.setStepSlice(20);
-cm.setMaxStep(45, 60);
+cm.setStepSlice(100);
+cm.setMaxStep(10, 25);
 
 function addChildApp (msg, cm) {
   if (msg.config) {
@@ -248,6 +248,5 @@ if (process.geteuid() === 0) {
   }, 200);
 } else {
   cm.loadConfig();
-  //步进50，定时器20毫秒，每隔1秒获取一次负载信息
   cm.monitorStart();
 }
