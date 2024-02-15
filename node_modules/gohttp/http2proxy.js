@@ -1,6 +1,6 @@
 'use strict'
 
-const hiio = require('./hiio')
+const hiio = require('./hiio.js')
 
 let h2cli = new hiio()
 

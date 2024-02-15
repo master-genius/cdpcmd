@@ -874,6 +874,8 @@ let paramck = new paramcheck({
   //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
   //string会严格判等，number仅仅数据判等，object是最强大的功能。
   data : {
+    //自定义错误返回的消息，每个属性都可以有自己的错误消息提示。
+    errorMessage: 'name长度必须在2～8范围内。',
     name: {
       //obj是c.query或c.param，k是属性名称，method是当前请求方法
       callback: (obj, k, method) => {
@@ -937,6 +939,8 @@ app.run(1234)
 ```
 
 这看起来很复杂，但是这样做的好处是可以复用规则。在多个复杂的应用处理上，很多参数的验证规则是一致的。
+
+每个属性的描述，都可以使用errorMessage作为自定义的特定错误消息。此功能在3.6.0版本以上可用。
 
 
 ## http2limit(http2限流)

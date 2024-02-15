@@ -30,6 +30,7 @@ let _typemap = {
   '.mp3'  : 'audio/mpeg',
   '.mp4'  : 'video/mp4',
   '.wav'  : 'audio/x-wav',
+  '.webm' : 'video/webm',
 
   '.ttf'  : 'font/ttf',
   '.wtf'  : 'font/wtf',
@@ -279,35 +280,23 @@ class staticdata {
         return c.send(r.data)
       }
 
-      let file_ok = true
+      let data = null
 
-      await fsp.access(pathfile).catch(err => {
-        file_ok = false
-      })
+      let extname = this.extName(pathfile)
 
-      if (!file_ok) return c.status(404).send('file not found')
-  
+      let ctype = self.filetype(extname)
+
+      let zipdata = null
+
       try {
-        let data = null
-
-        let extname = this.extName(pathfile)
-
-        let ctype = self.filetype(extname)
-
-        let zipdata = null
-
-        c.setHeader('content-type', ctype)
-
-        if (self.cacheControl) {
-          c.setHeader('cache-control', self.cacheControl)
-        }
-
-        if (ctype.indexOf('text/') === 0 || extname === '.json' || ctype.indexOf('font/') === 0) {
-          
+        if (ctype.indexOf('text/') === 0
+            || extname === '.json'
+            || ctype.indexOf('font/') === 0)
+        {
           data = await c.helper.readb(pathfile)
 
           //若文件很小，压缩后的数据很可能要比源文件还大，所以对超过1k的文件进行压缩，否则不进行压缩。
-          if (data.length > 1024) {
+          if (data && data.length > 1024) {
               zipdata = await new Promise((rv, rj) => {
                   zlib.gzip(data, (err, d) => {
                     if (err) {
@@ -321,17 +310,22 @@ class staticdata {
               })
           }
 
-          c.setHeader('content-length', zipdata ? zipdata.length : data.length)
+          c.setHeader('content-type', ctype)
+            .setHeader('content-length', zipdata ? zipdata.length : data.length)
 
           if (zipdata) {
             c.setHeader('content-encoding', 'gzip')
           }
 
-          c.send(zipdata || data)
+          self.cacheControl && c.setHeader('cache-control', self.cacheControl);
 
+          c.sendHeader().send(zipdata || data)
         } else {
           let fst = await fsp.stat(pathfile)
-          c.setHeader('content-length', fst.size)
+
+          c.setHeader('content-type', ctype).setHeader('content-length', fst.size);
+
+          self.cacheControl && c.setHeader('cache-control', self.cacheControl);
 
           data = await this.pipeData(pathfile, c, fst.size)
           //说明数据太大，放弃了缓存

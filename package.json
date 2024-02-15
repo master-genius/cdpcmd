@@ -1,14 +1,14 @@
 {
   "dependencies": {
     "cdpc": "^4.1.6",
-    "gohttp": "^5.0.3",
+    "gohttp": "^5.0.6",
     "npargv": "^1.0.9",
     "options-check": "^1.0.1",
     "thread-worker": "^1.0.2",
     "titbit": "^23.6.6",
-    "titbit-loader": "^22.6.3",
+    "titbit-loader": "^22.6.4",
     "titbit-token": "^2.1.2",
-    "titbit-toolkit": "^3.5.7",
+    "titbit-toolkit": "^3.6.1",
     "zipdata": "^1.0.2"
   }
 }
