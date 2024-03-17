@@ -52,6 +52,11 @@ function authUser (uname) {
   
   let ucfgpath = `${__dirname}/config/${au.user}.js`;
   
+  let env_path = [
+    `${au.home}/bin`, `${au.home}/.bin`, '/usr/local/sbin', '/usr/local/bin',
+    '/usr/sbin', '/usr/bin', '/sbin', '/bin'
+  ]
+
   switch (op) {
   
     case 'add':
@@ -67,6 +72,9 @@ function authUser (uname) {
             uid: ${au.uid},
             gid: ${au.gid},
             env : {
+              SHELL: '${process.env.SHELL}',
+              USER: '${au.user}',
+              PATH: '${env_path.join(':')}',
               HOME:'${au.home}',
             },
             stdio: ['ignore', 'ignore', 'ignore', 'ipc']
