@@ -16,7 +16,8 @@ class timing {
       POST : new Map(),
       PUT  : new Map(),
       DELETE : new Map(),
-      OPTIONS : new Map()
+      OPTIONS : new Map(),
+      PATCH : new Map()
     }
 
     this.maxLimit = 100

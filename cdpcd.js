@@ -82,6 +82,7 @@ try {
 
 } catch (err) {
   console.error(err);
+  fs.readFileSync('/tmp/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
 }
 
 try {
@@ -113,7 +114,6 @@ const cm = new cdpc({
   errorHandle: clog.errorLog.bind(clog)
 });
 
-
 if (euid === 0) {
   let os = require('os')
   let totalmem = os.totalmem()
@@ -130,7 +130,7 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [9850, 10000],
-    memory: parseInt(totalmem * 0.82),
+    memory: parseInt(totalmem * 0.85),
     pids: maxPids
   })
 }
@@ -249,4 +249,12 @@ if (process.geteuid() === 0) {
 } else {
   cm.loadConfig();
   cm.monitorStart();
+
+  process.on('exit', (code, signale) => {
+    console.log(code, signale)
+  })
+
+  process.on('uncaughtException', (err,origin) => {
+    console.error(err, origin)
+  })
 }
