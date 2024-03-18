@@ -53,7 +53,7 @@ function authUser (uname) {
   let ucfgpath = `${__dirname}/config/${au.user}.js`;
   
   let env_path = [
-    `${au.home}/bin`, `${au.home}/.bin`, '/usr/local/sbin', '/usr/local/bin',
+    `${au.home}/bin`, '/usr/local/sbin', '/usr/local/bin',
     '/usr/sbin', '/usr/bin', '/sbin', '/bin'
   ]
 
@@ -76,6 +76,7 @@ function authUser (uname) {
               USER: '${au.user}',
               PATH: '${env_path.join(':')}',
               HOME:'${au.home}',
+              LANG: '${process.env.LANG}',
             },
             stdio: ['ignore', 'ignore', 'ignore', 'ipc']
           },
