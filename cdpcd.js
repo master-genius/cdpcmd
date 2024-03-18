@@ -249,12 +249,9 @@ if (process.geteuid() === 0) {
 } else {
   cm.loadConfig();
   cm.monitorStart();
-
-  process.on('exit', (code, signale) => {
-    console.log(code, signale)
-  })
-
+  /*
   process.on('uncaughtException', (err,origin) => {
     console.error(err, origin)
   })
+  */
 }
