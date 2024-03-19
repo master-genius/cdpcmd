@@ -82,7 +82,7 @@ try {
 
 } catch (err) {
   console.error(err);
-  fs.readFileSync('./logs/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
+  fs.writeFileSync('./logs/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
 }
 
 try {
