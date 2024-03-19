@@ -29,7 +29,7 @@ let config_disabled_path = `${config_path}/disabled`;
 let loadfile = '/tmp/cdpcd-load.log';
 let event_dir = '/tmp/cdpcd_watch';
 let logfile = `${__dirname}/logs/cdpcd.log`;
-let pidfile = '/tmp/cdpcd-pid';
+let pidfile = __dirname + '/logs/cdpcd-pid';
 let logdir = __dirname + '/logs';
 
 let preg = /node.*\/usr\/local\/cdpc\/cdpcd\.js/i;
@@ -82,7 +82,7 @@ try {
 
 } catch (err) {
   console.error(err);
-  fs.readFileSync('/tmp/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
+  fs.readFileSync('./logs/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
 }
 
 try {
