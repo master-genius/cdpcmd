@@ -26,10 +26,13 @@ let _typemap = {
   '.webp' : 'image/webp',
   '.tif'  : 'image/tiff',
   '.tiff' : 'image/tiff',
+  '.avif' : 'image/avif',
+  '.apng' : 'image/apng',
 
   '.mp3'  : 'audio/mpeg',
-  '.mp4'  : 'video/mp4',
+  '.flac' : 'audio/flac',
   '.wav'  : 'audio/x-wav',
+  '.mp4'  : 'video/mp4',
   '.webm' : 'video/webm',
 
   '.ttf'  : 'font/ttf',
