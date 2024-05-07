@@ -2,6 +2,8 @@
 
 process.chdir(__dirname);
 
+const cdpc = require('cdpc');
+const cdpclog = require('./lib/cdpclog');
 const fs = require('fs');
 const fsp = fs.promises
 
@@ -57,15 +59,14 @@ if (euid > 0) {
   try_mkdir(config_disabled_path)
   try_mkdir(event_dir)
   try_mkdir(logdir)
+  process.chdir(local_path)
 }
 
 try {
   let cur_pid = fs.readFileSync(pidfile, {encoding: 'utf8'});
-
   cur_pid = parseInt(cur_pid);
 
   let pid = process.pid;
-
   if (cur_pid !== pid) {
     try {
       fs.accessSync(`/proc/${cur_pid}`);
@@ -91,9 +92,6 @@ try {
 } catch (err) {
 
 }
-
-const cdpc = require('cdpc');
-const cdpclog = require('./lib/cdpclog');
 
 const clog = new cdpclog(logfile);
 
@@ -122,17 +120,27 @@ if (euid === 0) {
 
   let maxPids = 'max'
   if (totalCPU <= 2) {
-    maxPids = 300
-  } else if (totalCPU <= 8) {
-    maxPids = 1000
-  } else if (totalCPU <= 32) {
-    maxPids = 10000
+    maxPids = 202
+  } else {
+    maxPids = 128 * totalCPU
   }
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [9850, 10000],
     memory: parseInt(totalmem * 0.9),
     pids: maxPids
+  });
+
+  cm.cgroup.create('cdpcd-80-limit', {
+    cpu: [8000, 10000],
+    memory: parseInt(totalmem * 0.75),
+    pids: parseInt(maxPids * 0.75)
+  });
+
+  cm.cgroup.create('cdpcd-50-limit', {
+    cpu: [5000, 10000],
+    memory: parseInt(totalmem * 0.5),
+    pids: parseInt(maxPids / 2)
   })
 }
 
@@ -235,6 +243,7 @@ let webServer = {
   monitor: true,
   lockReload: true,
   monitorNetData: true,
+  cgroup: 'cdpcd-50-limit',
   options: {
     stdio: ['ignore', 'ignore', 'ignore', 'ipc']
   },
