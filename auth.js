@@ -63,7 +63,7 @@ function authUser (uname) {
       try {
         fs.writeFileSync(`./uauth/${au.user}`, au.home, {encoding: 'utf8'})
         
-        let ucfg = `module.exports = {
+        let ucfg = `'use strict'\nmodule.exports = {
           name : 'cdpcd-${au.user}',
           args: ['--uid', ${au.uid}],
           file : '${__dirname}/cdpcd.js',
