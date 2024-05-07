@@ -5,7 +5,7 @@ process.chdir(__dirname);
 const fs = require('fs');
 const fsp = fs.promises
 
-function try_mkdir (dname) {
+function try_mkdir(dname) {
   let dst = true
 
   try {
@@ -56,6 +56,7 @@ if (euid > 0) {
   try_mkdir(config_path)
   try_mkdir(config_disabled_path)
   try_mkdir(event_dir)
+  try_mkdir(logdir)
 }
 
 try {
