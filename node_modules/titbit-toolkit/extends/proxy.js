@@ -22,7 +22,7 @@ const https = require('https');
 
 class proxy {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
 
     this.methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH', 'TRACE'];
 
@@ -135,7 +135,7 @@ class proxy {
 
   }
 
-  fmtpath (path) {
+  fmtpath(path) {
     path = path.trim();
     if (path.length == 0) {
       return '/*';
@@ -156,7 +156,7 @@ class proxy {
     return `${path}*`;
   }
 
-  setHostProxy (cfg) {
+  setHostProxy(cfg) {
     if (typeof cfg !== 'object') {
       return;
     }
@@ -295,7 +295,7 @@ class proxy {
     }
   }
 
-  parseUrl (url) {
+  parseUrl(url) {
     let u = new urlparse.URL(url);
     let urlobj = {
       hash :    u.hash,
@@ -328,7 +328,7 @@ class proxy {
     return urlobj;
   }
 
-  copyUrlobj (uobj) {
+  copyUrlobj(uobj) {
     let u = {
       hash: uobj.hash,
       hostname :  uobj.hostname,
@@ -354,7 +354,7 @@ class proxy {
     return u;
   }
 
-  getBackend (c, host) {
+  getBackend(c, host) {
     let prlist = this.hostProxy[host][c.routepath];
     let pb = this.proxyBalance[host][c.routepath];
     let pr;
@@ -395,7 +395,7 @@ class proxy {
     return pr;
   }
 
-  midhost () {
+  midhost() {
     let self = this;
     let timeoutError = new Error('request timeout');
     timeoutError.code = 'ETIMEOUT';
@@ -517,7 +517,7 @@ class proxy {
 
   }
 
-  timerRequest (pxy) {
+  timerRequest(pxy) {
     let h = http;
 
     let opts = {
@@ -553,8 +553,7 @@ class proxy {
     });
   }
 
-  setTimer (pxys) {
-
+  setTimer(pxys) {
     let count = 0;
 
     for (let p of pxys) {
@@ -581,8 +580,7 @@ class proxy {
     
   }
 
-  init (app) {
-
+  init(app) {
     app.config.timeout = this.timeout;
 
     for (let p in this.pathTable) {

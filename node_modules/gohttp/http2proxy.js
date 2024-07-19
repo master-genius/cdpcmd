@@ -33,7 +33,7 @@ let error_503_text = `<!DOCTYPE html><html>
       </body>
   </html>` 
 
-function fmtpath (path) {
+function fmtpath(path) {
   path = path.trim()
   if (path.length == 0) {
     return '/*'
@@ -466,6 +466,5 @@ hiiproxy.prototype.init =function (app) {
   })
 
 }
-
 
 module.exports = hiiproxy

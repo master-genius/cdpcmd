@@ -2,7 +2,7 @@
 
 class setfinal {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     
     this.finalHandle = null
 

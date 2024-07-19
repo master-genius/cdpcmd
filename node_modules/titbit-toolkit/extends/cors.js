@@ -28,7 +28,7 @@
 
 class cors {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     
     this.allow = '*';
     
@@ -95,7 +95,6 @@ class cors {
           break;
 
         case 'methods':
-
           if ((options[k] instanceof Array) || typeof options[k] === 'string') {
             this.methods = options[k];
           }
@@ -193,7 +192,7 @@ class cors {
 
   }
 
-  checkOrigin (url) {
+  checkOrigin(url) {
     return this.allowTable[url] ? true : false;
   }
 
@@ -240,7 +239,7 @@ class cors {
    * 
    */
 
-  mid () {
+  mid() {
     let self = this;
 
     return async (c, next) => {

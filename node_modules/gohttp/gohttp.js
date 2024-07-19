@@ -82,7 +82,7 @@ gohttp.prototype.parseUrl = function (url) {
   return urlobj;
 };
 
-function setOptsQuery (opts, options) {
+function setOptsQuery(opts, options) {
   if (options.query) {
     let qstr;
     let qchar = '?';
@@ -584,7 +584,7 @@ gohttp.prototype.transmit = function (url, opts = {}) {
 
 let compatMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 
-function _hiicompat (url, options, t) {
+function _hiicompat(url, options, t) {
   if (!(this instanceof _hiicompat)) {
     return new _hiicompat(url, options, t);
   }
@@ -681,7 +681,7 @@ Object.defineProperty(_hiicompat.prototype, 'setOptions', {
   enumerable: false
 });
 
-function setOptions (opts, method, resetMethod = false) {
+function setOptions(opts, method, resetMethod = false) {
   for (let k in this.urlobj) {
     if (k === 'headers' || k === 'method' || k === 'path')
       continue;

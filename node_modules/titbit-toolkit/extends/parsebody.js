@@ -8,11 +8,11 @@
 
 class parsebody {
 
-  constructor () {
+  constructor() {
 
   }
 
-  mid () {
+  mid() {
     return async (c, next) => {
       //非允许提交body数据的请求或DELETE请求但是没有提交body数据则直接跳过。
       let md = c.method[0];

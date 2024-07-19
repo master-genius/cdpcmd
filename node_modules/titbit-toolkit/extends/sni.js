@@ -4,7 +4,7 @@ const fs = require('fs')
 const tls = require('tls')
 
 class sni {
-  constructor (certs = {}) {
+  constructor(certs = {}) {
     this.certs = {}
 
     if (typeof certs !== 'object') {
@@ -39,7 +39,7 @@ class sni {
     }
   }
 
-  init (app) {
+  init(app) {
     app.config.server.SNICallback = this.callback()
   }
 

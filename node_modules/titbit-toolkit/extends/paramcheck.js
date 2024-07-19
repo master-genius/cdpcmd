@@ -10,7 +10,7 @@ let TYPE_NUMBER = 2
 
 class paramcheck {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     this.type = ['query', 'param', 'body']
     this.key = 'param'
     this.data = {}
@@ -96,7 +96,7 @@ class paramcheck {
    *    - min      最小值，可以 >= 此值，数字或字符串。
    *    - max      最大值，可以 <= 此值，数字或字符串。
    */
-  checkData (obj, k, rule, method, ost) {
+  checkData(obj, k, rule, method, ost) {
     let typ = typeof rule
 
     ost.ok = true
@@ -173,7 +173,7 @@ class paramcheck {
     return true
   }
 
-  dataFilter (c) {
+  dataFilter(c) {
     let d = c[this.key]
     let ost = {ok: true, key: ''}
 
@@ -188,7 +188,7 @@ class paramcheck {
     return ost
   }
 
-  mid () {
+  mid() {
     let self = this
     let dataObject = this.data
 

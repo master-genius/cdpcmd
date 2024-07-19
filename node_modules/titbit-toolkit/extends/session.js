@@ -12,7 +12,7 @@ const crypto = require('crypto')
 
 class session {
 
-  constructor () {
+  constructor() {
     this.expires = false
     this.domain  = false
     this.path  = '/'
@@ -38,7 +38,7 @@ class session {
 
   }
 
-  mid () {
+  mid() {
     let self = this
 
     return async (c, next) => {

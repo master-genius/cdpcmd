@@ -4,7 +4,7 @@ const cluster = require('cluster')
 
 class mixlogger {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     this.logHandle = (w, msg, handle) => {
       return true
     }
@@ -28,7 +28,6 @@ class mixlogger {
   }
 
   init(app) {
-
     if (cluster.isWorker) {
       return
     }

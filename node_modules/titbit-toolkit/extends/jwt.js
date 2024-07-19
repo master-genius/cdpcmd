@@ -28,7 +28,7 @@ const crypto = require('crypto')
 
 class jwt {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     this.expires = 3600000
     this.autoTimeout = true
     this.header = ''
@@ -102,12 +102,12 @@ class jwt {
     this.makeHeader()
   }
 
-  makeHeader () {
+  makeHeader() {
     let hdata = `{"alg":"${this.__alg__}","typ":"JWT"}`
     this.header = Buffer.from(hdata).toString('base64url')
   }
 
-  make (data) {
+  make(data) {
     if (typeof data === 'object') {
       if (this.autoTimeout) {
         data.__timeout__ = Date.now() + this.expires
@@ -120,13 +120,13 @@ class jwt {
     return `${org_str}.${this.sign(org_str, this.algMap[this.__alg__])}`
   }
 
-  sign (org_str, a = 'sm3') {
+  sign(org_str, a = 'sm3') {
     let h = crypto.createHmac(a, this.__key__)
     h.update(org_str)
     return h.digest('base64url')
   }
 
-  verify (token) {
+  verify(token) {
     let arr = token.split('.')
     if (arr.length !== 3) {
       return {
@@ -190,7 +190,7 @@ class jwt {
 
   }
 
-  mid () {
+  mid() {
     let self = this
 
     return async (c, next) => {

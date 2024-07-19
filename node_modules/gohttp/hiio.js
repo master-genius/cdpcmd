@@ -8,7 +8,7 @@ const qs = require('./qs.js')
 const bodymaker = require('./bodymaker.js')
 const fmtpath = require('./fmtpath.js')
 
-function parseUrl (url) {
+function parseUrl(url) {
 
   let urlobj = new urlparse.URL(url);
 
@@ -92,7 +92,7 @@ function parseContentRange(range) {
 
 }
 
-async function payload (reqobj, mkbody) {
+async function payload(reqobj, mkbody) {
   let needbody = false
   if (reqobj.method[0] === 'P') {
     needbody = true
@@ -196,7 +196,7 @@ class _response {
 
 }
 
-async function _download (stream, reqobj, ret, bkey) {
+async function _download(stream, reqobj, ret, bkey) {
 
   if (!reqobj.dir) {
     reqobj.dir = './'
@@ -682,7 +682,7 @@ class _Request {
  * 多个session负载均衡，提高客户端请求效率。
  */
 
-class sessionPool {
+class SessionPool {
 
   constructor(options = {}) {
     this.max = 10
@@ -940,7 +940,7 @@ hiio.prototype.connectPool = function (url, options = {}) {
 
   let max = options.max
 
-  let sp = new sessionPool({max : max})
+  let sp = new SessionPool({max : max})
 
   delete options.max
 

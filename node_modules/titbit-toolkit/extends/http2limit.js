@@ -20,7 +20,7 @@
 
 class stmlimit {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     this.cache = new Map();
   
     if (typeof options !== 'object') {
@@ -48,11 +48,11 @@ class stmlimit {
 
   }
 
-  _sid (sess) {
+  _sid(sess) {
     return `${sess.socket.remoteAddress} ${sess.socket.remotePort}`;
   }
 
-  set (id) {
+  set(id) {
 
     let s = this.cache.get(id);
 
@@ -73,11 +73,11 @@ class stmlimit {
     return s;
   }
 
-  remove (id) {
+  remove(id) {
     return this.cache.delete(id);
   }
 
-  checkAndSet (id) {
+  checkAndSet(id) {
     let s = this.set(id);
  
     if (s.count <= 1) return true;
@@ -100,7 +100,7 @@ class stmlimit {
     return true;
   }
 
-  init (app) {
+  init(app) {
     app.on('session', session => {
 
         let id = this._sid(session);

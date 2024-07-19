@@ -1,7 +1,7 @@
 'use strict';
 
 class referer {
-  constructor (options = {}) {
+  constructor(options = {}) {
 
     this.allow = [];
 
@@ -29,7 +29,7 @@ class referer {
 
   }
 
-  mid () {
+  mid() {
     let self = this;
 
     return async (c, next) => {

@@ -4,7 +4,7 @@ const fs = require('fs')
 
 class timing {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
 
     /**
      * route保存所有路由的最近耗时记录。
@@ -44,8 +44,7 @@ class timing {
 
   }
 
-  mid () {
-
+  mid() {
     let self = this
 
     return async (c, next) => {

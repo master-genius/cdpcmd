@@ -2,32 +2,32 @@
 
 class sendtype {
 
-  constructor () {
+  constructor() {
     
   }
 
-  sendType (data, type = 'html') {
+  sendType(data, type = 'html') {
     this.setHeader('content-type', `${type};charset-utf-8`)
         .send(data);
   }
 
-  html (data) {
+  html(data) {
     this.sendType(data, 'text/html')
   }
 
-  json (data) {
+  json(data) {
     this.sendType(data, 'application/json')
   }
 
-  xml (data) {
+  xml(data) {
     this.sendType(data, 'application/xml')
   }
 
-  text (data) {
+  text(data) {
     this.sendType(data, 'text/plain')
   }
 
-  js (data) {
+  js(data) {
     this.sendType(data, 'text/javascript')
   }
 
@@ -35,8 +35,7 @@ class sendtype {
     this.sendType(data, 'text/css')
   }
 
-  mid () {
-
+  mid() {
     let self = this
 
     return async (c, next) => {

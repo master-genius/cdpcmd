@@ -101,11 +101,11 @@ function getFile(name, ind=0) {
 
 class tofile {
 
-  constructor () {
+  constructor() {
 
   }
 
-  mid () {
+  mid() {
     let self = this
     return async (c, next) => {
       if (!c.isUpload) {
