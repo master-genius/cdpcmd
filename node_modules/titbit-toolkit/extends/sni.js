@@ -3,7 +3,7 @@
 const fs = require('fs')
 const tls = require('tls')
 
-class sni {
+class SNI {
   constructor(certs = {}) {
     this.certs = {}
 
@@ -45,5 +45,5 @@ class sni {
 
 }
 
-module.exports = sni
+module.exports = SNI
 

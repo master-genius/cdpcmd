@@ -1,6 +1,6 @@
 'use strict'
 
-class setfinal {
+class SetFinal {
 
   constructor(options = {}) {
     
@@ -47,4 +47,4 @@ class setfinal {
 
 }
 
-module.exports = setfinal
+module.exports = SetFinal

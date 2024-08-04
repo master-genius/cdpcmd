@@ -20,7 +20,7 @@ const https = require('https');
  * 
  */
 
-class proxy {
+class Proxy {
 
   constructor(options = {}) {
 
@@ -603,4 +603,4 @@ class proxy {
 
 }
 
-module.exports = proxy;
+module.exports = Proxy;

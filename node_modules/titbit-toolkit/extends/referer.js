@@ -1,6 +1,6 @@
 'use strict';
 
-class referer {
+class Referer {
   constructor(options = {}) {
 
     this.allow = [];
@@ -65,4 +65,4 @@ class referer {
 
 }
 
-module.exports = referer;
+module.exports = Referer;

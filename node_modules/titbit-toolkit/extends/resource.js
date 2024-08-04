@@ -50,7 +50,7 @@ let _typemap = {
  * 处理静态资源的请求，需要把中间件挂载到一个分组下，否则会影响全局，如果一个只做静态分发的服务则可以全局启用。
  */
 
-class staticdata {
+class Resource {
 
   constructor(options = {}) {
 
@@ -374,4 +374,4 @@ class staticdata {
 
 }
 
-module.exports = staticdata
+module.exports = Resource

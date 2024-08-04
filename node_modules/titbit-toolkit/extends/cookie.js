@@ -1,11 +1,11 @@
 'use strict';
 
-class cookies {
-  constructor () {
+class Cookie {
+  constructor() {
 
   }
 
-  mid () {
+  mid() {
 
     return async (rr, next) => {
       
@@ -43,4 +43,4 @@ class cookies {
 
 }
 
-module.exports = cookies;
+module.exports = Cookie;

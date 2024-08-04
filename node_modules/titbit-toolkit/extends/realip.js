@@ -1,6 +1,6 @@
 'use strict'
 
-class realip {
+class RealIP {
 
   constructor() {
     
@@ -32,4 +32,4 @@ class realip {
 
 }
 
-module.exports = realip
+module.exports = RealIP

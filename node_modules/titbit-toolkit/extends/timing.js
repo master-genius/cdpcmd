@@ -2,7 +2,7 @@
 
 const fs = require('fs')
 
-class timing {
+class Timing {
 
   constructor(options = {}) {
 
@@ -108,4 +108,4 @@ class timing {
 
 }
 
-module.exports = timing
+module.exports = Timing

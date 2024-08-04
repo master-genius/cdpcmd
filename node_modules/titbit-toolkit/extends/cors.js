@@ -26,7 +26,7 @@
  * 
  */
 
-class cors {
+class Cors {
 
   constructor(options = {}) {
     
@@ -322,4 +322,4 @@ class cors {
 
 }
 
-module.exports = cors;
+module.exports = Cors;

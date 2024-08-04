@@ -8,7 +8,7 @@
 let TYPE_STRING = 1
 let TYPE_NUMBER = 2
 
-class paramcheck {
+class ParamCheck {
 
   constructor(options = {}) {
     this.type = ['query', 'param', 'body']
@@ -247,4 +247,4 @@ class paramcheck {
 
 }
 
-module.exports = paramcheck
+module.exports = ParamCheck

@@ -26,7 +26,7 @@ const randstring = require('./__randstring')
 
 const crypto = require('crypto')
 
-class jwt {
+class JWT {
 
   constructor(options = {}) {
     this.expires = 3600000
@@ -213,4 +213,4 @@ class jwt {
 
 }
 
-module.exports = jwt
+module.exports = JWT

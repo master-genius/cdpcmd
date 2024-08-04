@@ -99,7 +99,7 @@ function getFile(name, ind=0) {
 }
 
 
-class tofile {
+class ToFile {
 
   constructor() {
 
@@ -120,4 +120,4 @@ class tofile {
 
 }
 
-module.exports = tofile
+module.exports = ToFile

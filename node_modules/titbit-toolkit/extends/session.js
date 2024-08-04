@@ -10,7 +10,7 @@ const crypto = require('crypto')
   没有会话ID或者读取文件失败则创建会话文件并发送Set-Cookie头部信息保存会话ID。
 */
 
-class session {
+class Session {
 
   constructor() {
     this.expires = false
@@ -167,4 +167,4 @@ class session {
 
 }
 
-module.exports = session
+module.exports = Session

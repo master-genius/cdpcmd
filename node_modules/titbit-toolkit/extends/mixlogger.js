@@ -2,7 +2,7 @@
 
 const cluster = require('cluster')
 
-class mixlogger {
+class MixLogger {
 
   constructor(options = {}) {
     this.logHandle = (w, msg, handle) => {
@@ -59,5 +59,5 @@ class mixlogger {
 
 }
 
-module.exports = mixlogger
+module.exports = MixLogger
 

@@ -18,7 +18,7 @@
  *
  **/
 
-class stmlimit {
+class StreamLimit {
 
   constructor(options = {}) {
     this.cache = new Map();
@@ -124,5 +124,5 @@ class stmlimit {
 
 }
 
-module.exports = stmlimit;
+module.exports = StreamLimit;
 

@@ -1,6 +1,6 @@
 'use strict';
 
-class sendtype {
+class SendType {
 
   constructor() {
     
@@ -55,4 +55,4 @@ class sendtype {
 
 }
 
-module.exports = sendtype
+module.exports = SendType

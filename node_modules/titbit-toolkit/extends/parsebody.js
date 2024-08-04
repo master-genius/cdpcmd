@@ -6,7 +6,7 @@
  * 上传文件titbit也会自动解析。
  */
 
-class parsebody {
+class ParseBody {
 
   constructor() {
 
@@ -40,4 +40,4 @@ class parsebody {
 
 }
 
-module.exports = parsebody;
+module.exports = ParseBody;
