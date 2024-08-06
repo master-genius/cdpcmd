@@ -15,13 +15,17 @@ try {
   process.exit(1)
 }
 
+let applist = []
+
+process.argv.length > 3 && (applist = process.argv.slice(3))
+
 let _stcolor = {
   RUNNING: '\x1b[2;36m',
   PAUSE : '\x1b[2;33m',
   EXIT : '\x1b[2;37m'
 }
 
-function stateColor (st) {
+function stateColor(st) {
   let color_text = _stcolor[st] || ''
 
   if (!color_text) return st
@@ -29,13 +33,18 @@ function stateColor (st) {
   return `${color_text}${st}\x1b[0m`
 }
 
-function fmtLoadText (ld) {
+function fmtLoadText(ld) {
   let text = ''
 
   for (let ch of ld.childs) {
+    if (applist.length > 0 && applist.indexOf(ch.name) < 0) {
+      continue
+    }
+
     text += ` Name: ${ch.name}\n`
     text += ` Args: ${ch.args.join(' ')}\n`
     text += ` Stat: ${stateColor(ch.state)}\n`
+    text += ` Cause: ${ch.cause}\n`
     text += ` ·PID: ${ch.pid}  CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n`
     
     if (ch.net) {
