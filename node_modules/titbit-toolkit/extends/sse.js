@@ -1,6 +1,6 @@
 'use strict'
 
-function fmtMessage (msg, withEnd = true) {
+function fmtMessage(msg, withEnd = true) {
   let text = ''
 
   if (Array.isArray(msg)) {

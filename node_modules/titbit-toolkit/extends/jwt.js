@@ -193,19 +193,20 @@ class JWT {
   mid() {
     let self = this
 
-    return async (c, next) => {
-      let token = c.headers.authorization
+    return async (ctx, next) => {
+      let token = ctx.headers.authorization || ctx.query.token
       if (!token) {
-        return c.status(401).send('unauthorized')
+        return ctx.status(401).send('unauthorized')
       }
 
       let r = self.verify(token)
 
       if (!r.ok) {
-        return c.status(401).send(r.errcode)
+        return ctx.status(401).send(r.errcode)
       }
 
-      c.box.user = r.data
+      ctx.box.user = r.data
+      ctx.user = r.data
 
       await next()
     }
