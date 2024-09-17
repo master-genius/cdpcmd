@@ -150,7 +150,7 @@ cm.strong();
 cm.setStepSlice(100);
 cm.setMaxStep(10, 25);
 
-function addChildApp (msg, cm) {
+function addChildApp(msg, cm) {
   if (msg.config) {
     if (Array.isArray(msg.config))
         cm.runChilds(msg.config);
