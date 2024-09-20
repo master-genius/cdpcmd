@@ -120,7 +120,7 @@ if (euid === 0) {
 
   let maxPids = 'max'
   if (totalCPU <= 2) {
-    maxPids = 202
+    maxPids = 200
   } else {
     maxPids = 128 * totalCPU
   }
@@ -129,18 +129,36 @@ if (euid === 0) {
     cpu: [9850, 10000],
     memory: parseInt(totalmem * 0.9),
     pids: maxPids
-  });
+  })
+  
+  cm.cgroup.create('cdpcd-85-limit', {
+    cpu: [8500, 10000],
+    memory: parseInt(totalmem * 0.75),
+    pids: parseInt(maxPids * 0.75)
+  })
 
   cm.cgroup.create('cdpcd-80-limit', {
     cpu: [8000, 10000],
-    memory: parseInt(totalmem * 0.75),
-    pids: parseInt(maxPids * 0.75)
-  });
+    memory: parseInt(totalmem * 0.7),
+    pids: parseInt(maxPids * 0.7)
+  })
+  
+  cm.cgroup.create('cdpcd-70-limit', {
+    cpu: [7000, 10000],
+    memory: parseInt(totalmem * 0.6),
+    pids: parseInt(maxPids * 0.6)
+  })
 
   cm.cgroup.create('cdpcd-50-limit', {
     cpu: [5000, 10000],
     memory: parseInt(totalmem * 0.5),
     pids: parseInt(maxPids / 2)
+  })
+  
+  cm.cgroup.create('cdpcd-25-limit', {
+    cpu: [2500, 10000],
+    memory: parseInt(totalmem * 0.3),
+    pids: 25
   })
 }
 
