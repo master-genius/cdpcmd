@@ -3,7 +3,7 @@
 process.chdir(__dirname);
 
 const cdpc = require('cdpc');
-const cdpclog = require('./lib/cdpclog');
+const cdpclog = require('./lib/cdpclog.js');
 const fs = require('fs');
 const fsp = fs.promises
 
