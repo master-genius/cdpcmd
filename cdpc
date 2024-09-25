@@ -469,7 +469,7 @@ case $1 in
         check_args2_exit $# 3
 
         #[add|remove] [USER]
-        handle_auth $2 $3
+        handle_auth $ARGS
         ;;
 
     help)

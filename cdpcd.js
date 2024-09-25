@@ -122,7 +122,7 @@ if (euid === 0) {
   if (totalCPU <= 2) {
     maxPids = 200
   } else {
-    maxPids = 128 * totalCPU
+    maxPids = 128 * (totalCPU - 1)
   }
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
@@ -151,13 +151,13 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-50-limit', {
     cpu: [5000, 10000],
-    memory: parseInt(totalmem * 0.5),
+    memory: parseInt(totalmem * 0.4),
     pids: parseInt(maxPids / 2)
   })
   
   cm.cgroup.create('cdpcd-25-limit', {
     cpu: [2500, 10000],
-    memory: parseInt(totalmem * 0.3),
+    memory: parseInt(totalmem * 0.25),
     pids: 25
   })
 }
