@@ -7,7 +7,34 @@ if (process.geteuid() > 0) {
 }
 
 const fs = require('fs')
-const getuser = require('./lib/getuser')
+const getuser = require('./lib/getuser.js')
+const npargv = require('npargv')
+
+let cgrouplist = [
+  'cdpcd-user-auth-limit', 'cdpcd-85-limit', 'cdpcd-80-limit', 'cdcpd-70-limit', 'cdpcd-50-limit',
+  'cdpcd-25-limit'
+]
+
+let arg = npargv({
+  '@command': [
+    'show', 'add', 'remove'
+  ],
+
+  '--cgroup': {
+    name: 'cgroup',
+    default: cgrouplist[0],
+    callback: (d) => {
+      if (['85', '80', '70', '50', '25'].indexOf(d) >= 0) {
+        return `cdpcd-${d}-limit`
+      }
+
+      return cgrouplist.indexOf(d) >= 0 ? d : cgrouplist[0]
+    }
+  }
+})
+
+let args = arg.args
+let userlist = arg.list
 
 let watchPath = '/tmp/cdpcd_watch'
 
@@ -24,14 +51,12 @@ if (process.argv.length < 4) {
   process.exit(1)
 }
 
-let op = process.argv[2]
+let op = args.command
 
 if (['show', 'add', 'remove'].indexOf(op) < 0) {
   console.error(`unknow command ${op}`)
   process.exit(1)
 }
-
-let ulist = process.argv.slice(3)
 
 if (op === 'show') {
   let flist = fs.readdirSync('./uauth');
@@ -42,7 +67,7 @@ if (op === 'show') {
   process.exit(0);
 }
 
-function authUser (uname) {
+function authUser(uname, cgroup) {
 
   let au = getuser(uname)
 
@@ -67,7 +92,7 @@ function authUser (uname) {
           name : 'cdpcd-${au.user}',
           args: ['--uid', ${au.uid}],
           file : '${__dirname}/cdpcd.js',
-          cgroup: 'cdpcd-user-auth-limit',
+          cgroup: '${cgroup}',
           options: {
             uid: ${au.uid},
             gid: ${au.gid},
@@ -113,6 +138,6 @@ function authUser (uname) {
   
 }
 
-for (let u of ulist) {
+for (let u of userlist) {
   authUser(u)
 }

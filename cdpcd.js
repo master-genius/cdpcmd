@@ -126,37 +126,37 @@ if (euid === 0) {
   }
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
-    cpu: [9850, 10000],
+    cpu: [98500, 100000],
     memory: parseInt(totalmem * 0.9),
     pids: maxPids
   })
   
   cm.cgroup.create('cdpcd-85-limit', {
-    cpu: [8500, 10000],
+    cpu: [86500, 100000],
     memory: parseInt(totalmem * 0.75),
     pids: parseInt(maxPids * 0.75)
   })
 
   cm.cgroup.create('cdpcd-80-limit', {
-    cpu: [8000, 10000],
+    cpu: [80000, 100000],
     memory: parseInt(totalmem * 0.7),
     pids: parseInt(maxPids * 0.7)
   })
   
   cm.cgroup.create('cdpcd-70-limit', {
-    cpu: [7000, 10000],
+    cpu: [70000, 100000],
     memory: parseInt(totalmem * 0.6),
     pids: parseInt(maxPids * 0.6)
   })
 
   cm.cgroup.create('cdpcd-50-limit', {
-    cpu: [5000, 10000],
+    cpu: [50000, 100000],
     memory: parseInt(totalmem * 0.4),
     pids: parseInt(maxPids / 2)
   })
   
   cm.cgroup.create('cdpcd-25-limit', {
-    cpu: [2500, 10000],
+    cpu: [25000, 100000],
     memory: parseInt(totalmem * 0.25),
     pids: 25
   })
