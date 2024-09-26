@@ -75,7 +75,6 @@ parse_args () {
                 ARGS="$ARGS $a"
             fi
         done
-
     fi
 }
 
@@ -296,7 +295,7 @@ handle_auth () {
             ;;
     esac
 
-    node /usr/local/cdpc/auth.js $1 $2
+    node /usr/local/cdpc/auth.js $ARGS
 }
 
 load_config () {
