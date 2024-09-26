@@ -51,7 +51,7 @@ if (process.argv.length < 4) {
   process.exit(1)
 }
 
-let op = args.command
+let op = arg.command
 
 if (['show', 'add', 'remove'].indexOf(op) < 0) {
   console.error(`unknow command ${op}`)
@@ -139,5 +139,5 @@ function authUser(uname, cgroup) {
 }
 
 for (let u of userlist) {
-  authUser(u)
+  authUser(u, args.cgroup)
 }
