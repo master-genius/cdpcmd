@@ -465,7 +465,7 @@ case $1 in
             exit 0
         fi
 
-        check_args2_exit $# 3
+        #check_args2_exit $# 3
 
         #[add|remove] [USER]
         handle_auth $ARGS
