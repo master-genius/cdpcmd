@@ -1,11 +1,11 @@
 {
   "dependencies": {
-    "cdpc": "^4.3.4",
+    "cdpc": "^4.4.0",
     "gohttp": "^5.0.7",
     "npargv": "^1.0.9",
     "options-check": "^1.0.1",
     "thread-worker": "^1.0.2",
-    "titbit": "^24.0.8",
+    "titbit": "^24.0.9",
     "titbit-loader": "^22.6.6",
     "titbit-token": "^2.1.3",
     "titbit-toolkit": "^3.6.9",
