@@ -28,7 +28,7 @@ let arg = npargv({
         return `cdpcd-${d}-limit`
       }
 
-      return cgrouplist.indexOf(d) >= 0 ? d : cgrouplist[0]
+      return cgrouplist.indexOf(d) >= 0 ? d : cgrouplist[1]
     }
   }
 })
@@ -46,7 +46,7 @@ try {
   })
 }
 
-if (process.argv.length < 4) {
+if (process.argv.length < 3) {
   console.error('less arguments: [show|add|remove] [USER]')
   process.exit(1)
 }
@@ -59,12 +59,16 @@ if (['show', 'add', 'remove'].indexOf(op) < 0) {
 }
 
 if (op === 'show') {
-  let flist = fs.readdirSync('./uauth');
+  let flist = fs.readdirSync('./uauth')
 
-  for (let f of flist)
-      console.log(f);
+  console.log(flist.join('  '))
 
-  process.exit(0);
+  process.exit(0)
+}
+
+if (userlist.length <= 0) {
+  console.error('less arguemnts: users')
+  process.exit(1)
 }
 
 function authUser(uname, cgroup) {

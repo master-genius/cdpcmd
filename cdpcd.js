@@ -273,13 +273,8 @@ if (process.geteuid() === 0) {
     cm.runChilds([webServer]);
     cm.loadConfig();
     cm.monitorStart();
-  }, 200);
+  }, 235);
 } else {
   cm.loadConfig();
   cm.monitorStart();
-  /*
-  process.on('uncaughtException', (err,origin) => {
-    console.error(err, origin)
-  })
-  */
 }

@@ -289,6 +289,10 @@ handle_auth () {
 
         remove)
             ;;
+
+        show)
+            ;;
+
         *)
             echo "unknow command"
             exit 1
@@ -394,13 +398,10 @@ case $1 in
                 UAULIST=`ls $CDPC_UAUTH`
                 UCDPCD_LOAD=''
                 for u in $UAULIST ; do
-                    if [ -z "$ARGS" ] ; then
-                      echo "------ $u ------:"
-                    fi
                     UHOMEDIR=`cat $CDPC_UAUTH/$u`
                     UCDPCD_LOAD="$UHOMEDIR/.local/cdpc/cdpcd-load.log"
                     if [ -f "$UCDPCD_LOAD" ] ; then
-                        node /usr/local/cdpc/outstatus.js $UCDPCD_LOAD $ARGS
+                        node /usr/local/cdpc/outstatus.js $UCDPCD_LOAD $ARGS --user $u
                     fi
                 done
             fi
