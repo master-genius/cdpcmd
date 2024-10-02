@@ -14,6 +14,19 @@ let arg = npargv({
     name: 'user',
     type: 'string',
     default: ''
+  },
+
+  //用于查询
+  '--has': {
+    type: 'boolean',
+    default: false,
+    name: 'has'
+  },
+
+  '--limit-user': {
+    type: 'string',
+    default: '',
+    name: 'limitUser'
   }
 })
 
@@ -48,30 +61,6 @@ function stateColor(st) {
 
   return `${color_text}${st}\x1b[0m`
 }
-
-/* function fmtLoadText(ld) {
-  let text = ''
-
-  for (let ch of ld.childs) {
-    if (applist.length > 0 && applist.indexOf(ch.name) < 0) {
-      continue
-    }
-
-    text += ` Name: ${ch.name}\n`
-    text += ` Args: ${ch.args.join(' ')}\n`
-    text += ` Stat: ${stateColor(ch.state)}\n`
-    text += ` Cause: ${ch.cause}\n`
-    text += ` ·PID: ${ch.pid}  CPU: ${ch.cpu}%  MEM: ${ch.mem}M\n`
-    
-    if (ch.net) {
-      text += ` ·NET[receive: ${ch.net.recvBytes}, transmit: ${ch.net.transmitBytes}]\n`
-    }
-
-    text += '\n'
-  }
-
-  return text
-} */
 
 /*
 Name      State       PID     CPU  MEM
@@ -113,6 +102,14 @@ function fmtLine(ld) {
   return textobj
 }
 
+function matchAppName(name, applist) {
+  for (let a of applist) {
+    if (name.indexOf(a) >= 0) return true
+  }
+
+  return false
+}
+
 function fmtLoadTable(ld) {
   let tableHead = {
     //最长28个字符
@@ -138,7 +135,7 @@ function fmtLoadTable(ld) {
   ])
 
   for (let ch of ld.childs) {
-    if (applist.length > 0 && applist.indexOf(ch.name) < 0) {
+    if (applist.length > 0 && !matchAppName(ch.name, applist)) {
       continue
     }
 
@@ -181,12 +178,34 @@ function fmtLoadTable(ld) {
 try {
   let data = fs.readFileSync(loadfile)
   let ld = JSON.parse(data)
+
+  if (args.has) {
+    let euid = process.geteuid()
+
+    for (let ch of ld.childs) {
+      if (applist.length > 0 && !matchAppName(ch.name, applist)) {
+        continue
+      }
+
+      if (args.limitUser && args.limitUser !== args.user && args.limitUser !== 'root') {
+        continue
+      }
+
+      if (args.user) {
+        console.log(`${args.user} ${ch.name} ${ch.pid||'-'}`)
+      } else {
+        console.log(`root ${ch.name} ${ch.pid}`)
+      }
+    }
+    process.exit(0)
+  }
+
   let tables = fmtLoadTable(ld)
   if (tables.length === 1) {
     process.exit(0)
   }
 
-  if (args.user && applist.length <= 0) {
+  if (args.user) {
     console.log(`------ User[${args.user}] ------`)
   }
 
