@@ -28,4 +28,12 @@ module.exports = {
     default: '0.0.0.0',
   },
 
+  '--port': {
+    name: 'port',
+    type: 'number',
+    default: 10101,
+    min: 1000,
+    max: 65535
+  }
+
 }

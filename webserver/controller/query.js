@@ -12,7 +12,7 @@
   使用ctx.getFile(name)获取上传的文件，示例：let f = ctx.getFile('image')
 **********************************************************************/
 
-class app {
+class query {
 
   constructor() {
     //param用于指定最后的路由参数，默认就是/:id
@@ -71,7 +71,7 @@ class app {
   }
 }
 
-module.exports = app
+module.exports = query
 
 //！！注意：以下注释是为了能够在支持jsdoc的代码编辑器中提示以及方便查阅提供，不需要可以去掉。
 /**

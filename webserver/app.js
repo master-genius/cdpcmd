@@ -132,7 +132,7 @@ try {
 
 }
 
-app.run(10101, args.host)
+app.run(args.port, args.host)
 
 process.on('message', (msg, handle) => {
   
