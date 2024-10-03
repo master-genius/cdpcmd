@@ -15,12 +15,9 @@
 class app {
 
   constructor() {
-    //param用于指定最后的路由参数，默认就是/:id
-    //若要改变路由，则可以设置此属性，比如设置为/:name
     //this.param = '/:id'
   }
 
-  //service默认是app.service，此参数通过titbit-loader初始化的initArgs选项进行控制。
   async init(service) {
     
   }

@@ -1,26 +1,15 @@
 'use strict'
 
-/**********************************************************************
-提示：
-  表单提交或异步请求发送的数据，对应于POST或PUT请求：
-    提交的请求体数据通过 ctx.body 获取。
-
-  路由参数通过 ctx.param 获取，示例：let id = ctx.param.id
-
-  url参数(?a=1&b=2)通过 ctx.query 获取，示例：let name = ctx.query.name
-
-  使用ctx.getFile(name)获取上传的文件，示例：let f = ctx.getFile('image')
-**********************************************************************/
+/**
+ * 查询应用是否存在，并确定存在的应用所属用户。
+ */
 
 class query {
 
   constructor() {
-    //param用于指定最后的路由参数，默认就是/:id
-    //若要改变路由，则可以设置此属性，比如设置为/:name
-    //this.param = '/:id'
+
   }
 
-  //service默认是app.service，此参数通过titbit-loader初始化的initArgs选项进行控制。
   async init(service) {
     
   }
@@ -61,19 +50,11 @@ class query {
 
   }
 
-  /**
-   * 删除资源
-   * @param {context} ctx
-   * @returns 
-   */
-  async _delete(ctx) {
-
-  }
 }
 
 module.exports = query
 
-//！！注意：以下注释是为了能够在支持jsdoc的代码编辑器中提示以及方便查阅提供，不需要可以去掉。
+
 /**
  * ---------------------- ctx.ext模块具备的方法 -----------------------------
  *

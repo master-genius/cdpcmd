@@ -246,7 +246,7 @@ out_app_state() {
     esac
 }
 
-handle_app () {
+handle_app() {
     for a in $ARGS ; do
         date > $CDPC_WATCH/$1/$a
     done
@@ -257,7 +257,7 @@ handle_app () {
     done
 }
 
-handle_webserver () {
+handle_webserver() {
     case $1 in
         start)
             ;;
@@ -282,7 +282,7 @@ handle_webserver () {
     echo cdpcd-web-server > $CDPC_WATCH/$1/cdpcd-web-server
 }
 
-handle_auth () {
+handle_auth() {
     case $1 in
         add)
             ;;
@@ -302,11 +302,11 @@ handle_auth () {
     node /usr/local/cdpc/auth.js $ARGS
 }
 
-load_config () {
+load_config() {
     echo $1 > $CDPC_WATCH/load
 }
 
-clear_logs () {
+clear_logs() {
     LOGFILES=`ls $CDPC_LOGDIR`
     for f in $LOGFILES ; do
         if [ ! "$f" = "cdpcd.log" ] ; then
@@ -315,7 +315,7 @@ clear_logs () {
     done
 }
 
-handle_log () {
+handle_log() {
     case $1 in
         clear)
             clear_logs
