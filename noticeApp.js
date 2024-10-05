@@ -23,6 +23,8 @@ try {
     encoding: 'utf8',
     mode: 0o644
   })
+
+  process.exit(0)
 } catch (err) {
   console.error(err)
 }

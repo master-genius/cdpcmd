@@ -41,7 +41,7 @@ if (nm[0] === '' || nm[0] === 'root') {
   statefile = `${home_path}/.local/cdpc/watch/state/${nm[1]}`
 }
 
-async function outState(statefile, callback, total=99) {
+async function outState(statefile, callback, total=280) {
   for (let i = 0; i < total; i++) {
     let state = fs.readFileSync(statefile, {encoding: 'utf8'})
     if (callback(state)) {
@@ -50,7 +50,7 @@ async function outState(statefile, callback, total=99) {
     }
 
     await new Promise((rv, rj) => {
-      setTimeout(() => {rv()}, 50)
+      setTimeout(() => {rv()}, 35)
     })
   }
 }
@@ -81,12 +81,16 @@ async function get_state(statefile, appname, user) {
       break
 
     case 'remove':
-      for (let i = 0; i < 99; i++) {
+      for (let i = 0; i < 123; i++) {
         try {
           await fsp.access(statefile)
         } catch (err) {
           return console.log(`${appname} removed`)
         }
+
+        await new Promise((rv, rj) => {
+          setTimeout(() => {rv()}, 50)
+        })
       }
       process.exit(0)
   }

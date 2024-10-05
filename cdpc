@@ -248,6 +248,10 @@ out_app_state() {
     esac
 }
 
+remove_file_delay() {
+    sleep 0.05 && rm $1
+}
+
 # 通过has子命令查找是否存在应用。
 # 只有超级用户才可以获取所有的应用状态并指定其他用户身份控制应用。
 handle_app() {
@@ -264,8 +268,13 @@ handle_app() {
     fi
 
     for a in $HAS_RESULT; do
-        MAP_NAME_CMD=`node $CDPC_INS_DIR/mapnametocmd.js $a -op $1`
-        $MAP_NAME_CMD
+        MAP_NAME_CMD_FILE=`node $CDPC_INS_DIR/mapnametocmd.js $a -op $1`
+
+        node $CDPC_INS_DIR/noticeApp.js $MAP_NAME_CMD_FILE
+        if [ "$EUID" -eq 0 ] ; then
+            #删除文件，避免问题
+            remove_file_delay $MAP_NAME_CMD_FILE &
+        fi
     done
 
     for a in $HAS_RESULT ; do

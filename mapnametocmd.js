@@ -26,15 +26,18 @@ let cmdlist = []
 for (let name of namelist) {
   let nm = parseName(name)
   if (nm[0] === '' || nm[0] === 'root') {
-    cmdlist.push(`node /usr/local/cdpc/noticeApp.js ${ROOT_CDPC_WATCH}/${args.op}/${nm[1]}`)
+    cmdlist.push(`${ROOT_CDPC_WATCH}/${args.op}/${nm[1]}`)
+    //cmdlist.push(`node /usr/local/cdpc/noticeApp.js ${ROOT_CDPC_WATCH}/${args.op}/${nm[1]}`)
   } else {
     try {
       let home_path = euid === 0 
                         ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
                         : process.env.HOME
 
-      let app_file = `${home_path}/.local/cdpc/watch/${args.op}/${nm[1]}`
-      let cmdtext = `node /usr/local/cdpc/noticeApp.js ${app_file}${euid === 0 ? ` && chown ${nm[0]} ${app_file}` : '' }`
+      //let app_file = `${home_path}/.local/cdpc/watch/${args.op}/${nm[1]}`
+      let cmdtext = `${home_path}/.local/cdpc/watch/${args.op}/${nm[1]}`
+      
+      //let cmdtext = `node /usr/local/cdpc/noticeApp.js ${app_file}${euid === 0 ? ` && chown ${nm[0]} ${app_file}` : '' }`
       cmdlist.push(cmdtext)
     } catch (err) {
       console.error(err)
