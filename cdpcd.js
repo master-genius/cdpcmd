@@ -73,8 +73,38 @@ try {
       let data = fs.readFileSync(`/proc/${cur_pid}/cmdline`, {encoding: 'utf8'});
 
       if ( preg.test(data) ) {
-        console.error('服务已经运行。');
-        process.exit(1);
+        if (process.geteuid() === 0) {
+          console.error('服务已经运行。');
+          process.exit(1);
+        } else {
+          try {
+            process.kill('SIGTERM', cur_pid)
+            process.nextTick(() => {
+              try {
+                process.kill('SIGKILL', cur_pid)
+              } catch (err) {
+                console.error(`无法终止已经运行的服务，请手动终止`)
+                if (process.send) {
+                  process.send({
+                    op: 'log',
+                    type: 'error',
+                    message: `无法终止已经运行的服务，请手动终止`,
+                    errname: '--ERR-KILL-USER-CDPCD--'
+                  })
+                }
+              }
+            })
+          } catch (err) {
+            if (process.send) {
+              process.send({
+                op: 'log',
+                type: 'error',
+                message: `尝试使用SIGTERM信号终止运行中的服务失败`,
+                errname: '--ERR-TERM-USER-CDPCD--'
+              })
+            }
+          }
+        }
       }
 
     } catch (err) {
