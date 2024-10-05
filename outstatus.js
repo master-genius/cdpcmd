@@ -181,7 +181,7 @@ try {
 
   if (args.has) {
     let euid = process.geteuid()
-
+    let haslist = []
     for (let ch of ld.childs) {
       if (applist.length > 0 && !matchAppName(ch.name, applist)) {
         continue
@@ -192,10 +192,13 @@ try {
       }
 
       if (args.user) {
-        console.log(`${args.user} ${ch.name} ${ch.pid||'-'}`)
+        haslist.push(`${args.user} ${ch.name} ${ch.pid||'-'}`)
+        //console.log(`${args.user} ${ch.name} ${ch.pid||'-'}`)
       } else {
-        console.log(`root ${ch.name} ${ch.pid}`)
+        haslist.push(`root ${ch.name} ${ch.pid||'-'}`)
+        //console.log(`root ${ch.name} ${ch.pid}`)
       }
+      console.log(haslist.join('|'))
     }
     process.exit(0)
   }
