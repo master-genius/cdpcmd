@@ -62,7 +62,7 @@ async function get_state(statefile, appname, user) {
       break
 
     case 'remove':
-      for (let i = 0; i < 123; i++) {
+      for (let i = 0; i < 200; i++) {
         try {
           await fsp.access(statefile)
         } catch (err) {
@@ -71,10 +71,10 @@ async function get_state(statefile, appname, user) {
         }
 
         await new Promise((rv, rj) => {
-          setTimeout(() => {rv()}, 50)
+          setTimeout(() => {rv()}, 35)
         })
       }
-      
+
       process.exit(0)
   }
 

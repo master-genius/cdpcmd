@@ -286,6 +286,11 @@ case $1 in
         handle_app remove $ARGS
         ;;
 
+    safe-remove)
+        check_args2_exit $# 2
+        handle_app safeRemove $ARGS
+        ;;
+
     load)
         if [ "$#" -lt 2 ] ; then
             load_config $CDPC_CONFIG
