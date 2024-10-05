@@ -114,8 +114,21 @@ function fmtLine(ld) {
   return textobj
 }
 
-function matchAppName(name, applist) {
+function matchAppName(name, applist, user='') {
   for (let a of applist) {
+    let ind = a.indexOf(':')
+    if (ind > 0) {
+      if (user && a.indexOf(user) !== 0) {
+        continue
+      }
+
+      if (name.indexOf(a.substring(ind+1)) >= 0) {
+        return true
+      } else {
+        continue
+      }
+    }
+
     if (name.indexOf(a) >= 0) return true
   }
 
@@ -195,7 +208,7 @@ try {
     let euid = process.geteuid()
     let haslist = []
     for (let ch of ld.childs) {
-      if (applist.length > 0 && !matchAppName(ch.name, applist)) {
+      if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) {
         continue
       }
 
