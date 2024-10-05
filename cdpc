@@ -11,6 +11,7 @@ is_systemd() {
 
 ME=`whoami`
 
+CDPC_INS_DIR=/usr/local/cdpc
 CDPC_DIR=/usr/local/cdpc
 CDPC_WATCH=/tmp/cdpcd_watch
 CDPC_LOADINFO=/tmp/cdpcd-load.log
@@ -226,6 +227,7 @@ out_app_state() {
                 fi
             done
             ;;
+
         pause)
             while sleep 0.15; do
                 let __CHECK_COUNT+=1
@@ -261,14 +263,13 @@ handle_app() {
         exit 1
     fi
 
-    for a in $ARGS ; do
-        date > $CDPC_WATCH/$1/$a
+    for a in $HAS_RESULT; do
+        MAP_NAME_CMD=`node $CDPC_INS_DIR/mapnametocmd.js $a -op $1`
+        $MAP_NAME_CMD
     done
 
-    for a in $ARGS ; do
-
-        check_has_app $a
-        out_app_state $1 $a
+    for a in $HAS_RESULT ; do
+        node $CDPC_INS_DIR/get_app_state.js $1 --app $a
     done
 }
 
@@ -409,23 +410,23 @@ case $1 in
     has-name)
         STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
 
-        node combine-status-result.js $STATUS_TEXT_RESULT --only-name
+        node $CDPC_INS_DIR/combine-status-result.js $STATUS_TEXT_RESULT --only-name
         ;;
 
     has-encode)
         STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
 
-        node combine-status-result.js $STATUS_TEXT_RESULT --encode-json
+        node $CDPC_INS_DIR/combine-status-result.js $STATUS_TEXT_RESULT --encode-json
         ;;
 
     has)
         STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
 
-        node combine-status-result.js $STATUS_TEXT_RESULT
+        node $CDPC_INS_DIR/combine-status-result.js $STATUS_TEXT_RESULT
         ;;
 
     status)
-        node /usr/local/cdpc/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
+        node $CDPC_INS_DIR/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
         if [ "$UID" -eq 0 ] ; then
             if [ -d "$CDPC_UAUTH" ] ; then
                 UAULIST=`ls $CDPC_UAUTH`
@@ -434,7 +435,7 @@ case $1 in
                     UHOMEDIR=`cat $CDPC_UAUTH/$u`
                     UCDPCD_LOAD="$UHOMEDIR/.local/cdpc/cdpcd-load.log"
                     if [ -f "$UCDPCD_LOAD" ] ; then
-                        node /usr/local/cdpc/outstatus.js $UCDPCD_LOAD $ARGS --user $u
+                        node $CDPC_INS_DIR/outstatus.js $UCDPCD_LOAD $ARGS --user $u
                     fi
                 done
             fi
