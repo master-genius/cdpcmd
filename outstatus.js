@@ -160,7 +160,7 @@ function fmtLoadTable(ld) {
   ])
 
   for (let ch of ld.childs) {
-    if (applist.length > 0 && !matchAppName(ch.name, applist)) {
+    if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) {
       continue
     }
 
