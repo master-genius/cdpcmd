@@ -45,7 +45,7 @@ async function outState(statefile, callback, total=99) {
   for (let i = 0; i < total; i++) {
     let state = fs.readFileSync(statefile, {encoding: 'utf8'})
     if (callback(state)) {
-      console.log(state)
+      console.log(nm[0], nm[1], state)
       break
     }
 
