@@ -273,13 +273,13 @@ handle_app() {
         node $CDPC_INS_DIR/noticeApp.js $MAP_NAME_CMD_FILE
         if [ "$EUID" -eq 0 ] ; then
             #删除文件，避免问题
-            remove_file_delay $MAP_NAME_CMD_FILE &
+            if [ -f "$MAP_NAME_CMD_FILE" ] ; then
+                remove_file_delay $MAP_NAME_CMD_FILE &
+            fi
         fi
     done
 
-    for a in $HAS_RESULT ; do
-        node $CDPC_INS_DIR/get_app_state.js $1 --app $a
-    done
+    node $CDPC_INS_DIR/get_app_state.js $1 $HAS_RESULT
 }
 
 handle_webserver() {

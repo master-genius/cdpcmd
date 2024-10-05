@@ -16,17 +16,36 @@ let arg = npargv({
   '@command': [
     'start', 'stop', 'restart', 'pause', 'resume', 'remove'
   ],
+
+  '--app': {
+    name: 'app',
+    type: 'string',
+    default: ''
+  },
 })
 
 
 let args = arg.args
 
-let namelist = arg.list
-async function outState(statefile, user, appname, callback, total=280) {
+let nm = parseName(args.app)
+
+let statefile = ''
+
+if (nm[0] === '' || nm[0] === 'root') {
+  statefile = `${ROOT_CDPC_WATCH}/state/${nm[1]}`
+} else {
+  let home_path = euid === 0 
+                  ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
+                  : process.env.HOME
+
+  statefile = `${home_path}/.local/cdpc/watch/state/${nm[1]}`
+}
+
+async function outState(statefile, callback, total=280) {
   for (let i = 0; i < total; i++) {
     let state = fs.readFileSync(statefile, {encoding: 'utf8'})
     if (callback(state)) {
-      console.log(user, appname, state)
+      console.log(nm[0], nm[1], state)
       break
     }
 
@@ -78,35 +97,15 @@ async function get_state(statefile, appname, user) {
 
   if (Array.isArray(regex)) {
     for (let r of regex) {
-      await outState(statefile, user, appname, (state) => {
+      await outState(statefile, (state) => {
         return r.test(state)
       })
     }
   } else {
-    await outState(statefile, user, appname, (state) => {
+    await outState(statefile, (state) => {
       return regex.test(state)
     })
   }
 }
 
-function parseAndOutInfo(appname) {
-  let nm = parseName(appname)
-
-  let statefile = ''
-  
-  if (nm[0] === '' || nm[0] === 'root') {
-    statefile = `${ROOT_CDPC_WATCH}/state/${nm[1]}`
-  } else {
-    let home_path = euid === 0 
-                    ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
-                    : process.env.HOME
-  
-    statefile = `${home_path}/.local/cdpc/watch/state/${nm[1]}`
-  }
-
-  get_state(statefile, nm[1], nm[0])
-}
-
-for (let name of namelist) {
-  parseAndOutInfo(name)
-}
+get_state(statefile, nm[1], nm[0])
