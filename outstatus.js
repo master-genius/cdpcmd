@@ -27,6 +27,18 @@ let arg = npargv({
     type: 'string',
     default: '',
     name: 'limitUser'
+  },
+
+  '--json': {
+    type: 'boolean',
+    default: false,
+    name: 'json'
+  },
+
+  '--encode-json': {
+    type: 'boolean',
+    default: false,
+    name: 'encodeJson'
   }
 })
 
@@ -198,8 +210,19 @@ try {
         haslist.push(`root ${ch.name} ${ch.pid||'-'}`)
         //console.log(`root ${ch.name} ${ch.pid}`)
       }
-      console.log(haslist.join('|'))
     }
+
+    if (haslist.length > 0) {
+      if (args.encodeJson) {
+        console.log( encodeURIComponent(JSON.stringify(haslist)) )
+      }
+      else if (args.json) {
+        console.log(JSON.stringify(haslist))
+      } else {
+        console.log(haslist.join('|'))
+      }
+    }
+
     process.exit(0)
   }
 

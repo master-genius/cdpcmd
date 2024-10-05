@@ -246,12 +246,27 @@ out_app_state() {
     esac
 }
 
+# 通过has子命令查找是否存在应用。
+# 只有超级用户才可以获取所有的应用状态并指定其他用户身份控制应用。
 handle_app() {
+    LIMIT_USER_ARGS=''
+    if [ $EUID -ne 0 ] ; then
+        LIMIT_USER_ARGS=" --limit-user $USER"
+    fi
+
+    HAS_RESULT=`$0 has-name $ARGS`
+
+    if [ -z "$HAS_RESULT" ] ; then
+        echo "$ARGS not found!" | awk '{$1=$1};1'
+        exit 1
+    fi
+
     for a in $ARGS ; do
         date > $CDPC_WATCH/$1/$a
     done
 
     for a in $ARGS ; do
+
         check_has_app $a
         out_app_state $1 $a
     done
@@ -391,8 +406,26 @@ case $1 in
       echo $ARGS
       ;;
 
+    has-name)
+        STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
+
+        node combine-status-result.js $STATUS_TEXT_RESULT --only-name
+        ;;
+
+    has-encode)
+        STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
+
+        node combine-status-result.js $STATUS_TEXT_RESULT --encode-json
+        ;;
+
+    has)
+        STATUS_TEXT_RESULT=`$0 status --has --encode-json $ARGS`
+
+        node combine-status-result.js $STATUS_TEXT_RESULT
+        ;;
+
     status)
-        node /usr/local/cdpc/outstatus.js $CDPC_LOADINFO $ARGS
+        node /usr/local/cdpc/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
         if [ "$UID" -eq 0 ] ; then
             if [ -d "$CDPC_UAUTH" ] ; then
                 UAULIST=`ls $CDPC_UAUTH`
@@ -408,7 +441,7 @@ case $1 in
         fi
         ;;
 
-    has)
+    has-app)
         for a in $ARGS ; do
             if check_has_app $a ; then
                 echo "has $a"
