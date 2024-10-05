@@ -66,13 +66,15 @@ async function get_state(statefile, appname, user) {
         try {
           await fsp.access(statefile)
         } catch (err) {
-          return console.log(`${appname} removed`)
+          console.log(`${user} ${appname} removed`)
+          process.exit(0)
         }
 
         await new Promise((rv, rj) => {
           setTimeout(() => {rv()}, 50)
         })
       }
+      
       process.exit(0)
   }
 

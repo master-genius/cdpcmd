@@ -139,117 +139,14 @@ check_has_app() {
     return 0
 }
 
-out_app_state() {
-    __CHECK_COUNT=0
-    _CUR_STATE_FILE="$CDPC_WATCH/state/$2"
-    #按照预期的结果进行检测
-    case $1 in
-        start|resume)
-            while sleep 0.15 ; do
-                let __CHECK_COUNT+=1
-                if [ -f "$_CUR_STATE_FILE" ] ; then
-                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
-                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^running'`
-                    if [ -n "$MATCH_STATE" ] ; then
-                        echo "$2 $APP_STATE_TEXT"
-                        break
-                    fi
-                fi
-
-                if [ "$__CHECK_COUNT" -gt 99 ] ; then
-                    break
-                fi
-            done
-            ;;
-        restart)
-          while sleep 0.1 ; do
-              let __CHECK_COUNT+=1
-              if [ -f "$_CUR_STATE_FILE" ] ; then
-                APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
-                MATCH_STATE=`cat $_CUR_STATE_FILE | grep '^exit'`
-                if [ -n "$MATCH_STATE" ] ; then
-                  echo "$2 $APP_STATE_TEXT"
-                  break
-                fi
-              fi
-
-              if [ "$__CHECK_COUNT" -gt 99 ] ; then
-                break
-              fi
-          done
-          
-          let __CHECK_COUNT=0
-
-          while sleep 0.1 ; do
-              let __CHECK_COUNT+=1
-              if [ -f "$_CUR_STATE_FILE" ] ; then
-                APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
-                MATCH_STATE=`cat $_CUR_STATE_FILE | grep '^running'`
-                if [ -n "$MATCH_STATE" ] ; then
-                  echo "$2 $APP_STATE_TEXT"
-                  break
-                fi
-              fi
-
-              if [ "$__CHECK_COUNT" -gt 123 ] ; then
-                break
-              fi
-          done
-          ;;
-        stop)
-            while sleep 0.15 ; do
-                let __CHECK_COUNT+=1
-                if [ -f "$_CUR_STATE_FILE" ] ; then
-                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
-                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^exit'`
-                    if [ -n "$MATCH_STATE" ] ; then
-                        echo "$2 stoped"
-                        break
-                    fi
-                fi
-
-                if [ "$__CHECK_COUNT" -gt 99 ] ; then
-                    break
-                fi
-            done
-            ;;
-
-        remove)
-            while sleep 0.15 ; do
-                let __CHECK_COUNT+=1
-                if [ ! -f "$_CUR_STATE_FILE" ] ; then
-                    echo "$2 removed"
-                    break
-                fi
-
-                if [ "$__CHECK_COUNT" -gt 99 ] ; then
-                    break
-                fi
-            done
-            ;;
-
-        pause)
-            while sleep 0.15; do
-                let __CHECK_COUNT+=1
-                if [ -f "$_CUR_STATE_FILE" ] ; then
-                    APP_STATE_TEXT=`cat $_CUR_STATE_FILE`
-                    MATCH_STATE=`echo $APP_STATE_TEXT | grep '^pause'`
-                    if [ -n "$MATCH_STATE" ] ; then
-                        echo "$2 pause..."
-                        break
-                    fi
-                fi
-
-                if [ "$__CHECK_COUNT" -gt 99 ] ; then
-                    break
-                fi
-            done
-            ;;
-    esac
+real_remove_file() {
+    if [ -f "$1" ] ; then
+        rm $1
+    fi
 }
 
 remove_file_delay() {
-    sleep 0.05 && rm $1
+    sleep 0.05 && real_remove_file $1
 }
 
 # 通过has子命令查找是否存在应用。
