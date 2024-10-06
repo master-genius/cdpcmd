@@ -176,6 +176,11 @@ function fmtLoadTable(ld) {
 
     if (args.list) {
       tables.push([
+        '  @cmd ',
+        ch.command
+      ])
+      
+      tables.push([
         '  @args ',
         ch.args.join(' ')
       ])

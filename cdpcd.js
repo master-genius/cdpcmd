@@ -112,8 +112,33 @@ clog.init().catch(err => {
   fs.writeFile('/tmp/cdpcd-temp.log', err.message, err => {});
 });
 
+let disabledApp = {
+  time: 0,
+  list: []
+}
+
+function getDisabledApp() {
+  let tm = Date.now()
+  if (tm - disabledApp.time < 10000) {
+    return disabledApp.list
+  }
+
+  disabledApp.time = tm
+
+  try {
+    disabledApp.list = fs.readdirSync(config_disabled_path, {withFileTypes: true})
+                            .filter(d => d.isFile())
+                            .map(d => d.name)
+  } catch (err) {
+    disabledApp.list = []
+  }
+
+  return disabledApp.list
+}
+
 /**
  * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。
+ * notExitButSpread设置为true，可以在不退出的情况下扩散信号。
  */
 const cm = new cdpc({
   //notExit: true,
@@ -124,8 +149,12 @@ const cm = new cdpc({
   eventDir: event_dir,
   debug: true,
   childDetached: euid === 0 ? false : true,
-  errorHandle: clog.errorLog.bind(clog)
-});
+  errorHandle: clog.errorLog.bind(clog),
+  disabledCallback: (chk) => {
+    let real_list = getDisabledApp()
+    return !real_list.includes(chk.name)
+  }
+})
 
 if (euid === 0) {
   let os = require('os')
@@ -141,7 +170,7 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
     cpu: [98500, 100000],
-    memory: parseInt(totalmem * 0.9),
+    memory: parseInt(totalmem * 0.85),
     pids: maxPids
   })
   
@@ -153,13 +182,13 @@ if (euid === 0) {
 
   cm.cgroup.create('cdpcd-80-limit', {
     cpu: [80000, 100000],
-    memory: parseInt(totalmem * 0.7),
+    memory: parseInt(totalmem * 0.65),
     pids: parseInt(maxPids * 0.7)
   })
   
   cm.cgroup.create('cdpcd-70-limit', {
     cpu: [70000, 100000],
-    memory: parseInt(totalmem * 0.6),
+    memory: parseInt(totalmem * 0.55),
     pids: parseInt(maxPids * 0.6)
   })
 

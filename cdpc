@@ -42,6 +42,7 @@ if [ ! -d "$CDPC_DIR" ] ; then
 fi
 
 CDPC_CONFIG="$CDPC_DIR/config"
+CDPC_DISABLED_DIR="$CDPC_CONFIG/disabled"
 
 if [ ! -d "$CDPC_CONFIG" ] ; then
     mkdir -p $CDPC_CONFIG
@@ -53,6 +54,10 @@ fi
 
 if [ ! -d "$CDPC_WATCH" ] ; then
     mkdir -p $CDPC_WATCH
+fi
+
+if [ ! -d "$CDPC_DISABLED_DIR" ] ; then
+    mkdir -p $CDPC_DISABLED_DIR
 fi
 
 CDPC_SERVER="$CDPC_DIR/webserver"
@@ -289,6 +294,16 @@ case $1 in
     safe-remove)
         check_args2_exit $# 2
         handle_app safeRemove $ARGS
+        ;;
+
+    disable)
+        check_args2_exit $# 2
+        handle_app disable $ARGS
+        ;;
+
+    enable)
+        check_args2_exit $# 2
+        handle_app disable $ARGS
         ;;
 
     load)
