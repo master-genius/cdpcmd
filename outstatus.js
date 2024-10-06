@@ -200,58 +200,80 @@ function fmtLoadTable(ld) {
   return tables
 }
 
-try {
-  let data = fs.readFileSync(loadfile)
-  let ld = JSON.parse(data)
+let loadData = ''
+let ld = []
 
-  if (args.has) {
-    let euid = process.geteuid()
-    let haslist = []
-    for (let ch of ld.childs) {
-      if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) {
-        continue
-      }
+async function getLoadData(loadfile, loop=10) {
+  try {
+    let loadData = fs.readFileSync(loadfile, {encoding: 'utf8'})
+    return JSON.parse(loadData)
+  } catch (err) {
+    if (loop > 0) {
+      await new Promise((rv, rj) => {
+        setTimeout(() => {rv()}, parseInt(Math.random() * 5) + loop)
+      })
 
-      if (args.limitUser && args.limitUser !== args.user && args.limitUser !== 'root') {
-        continue
-      }
-
-      if (args.user) {
-        haslist.push(`${args.user} ${ch.name} ${ch.pid||'-'}`)
-        //console.log(`${args.user} ${ch.name} ${ch.pid||'-'}`)
-      } else {
-        haslist.push(`root ${ch.name} ${ch.pid||'-'}`)
-        //console.log(`root ${ch.name} ${ch.pid}`)
-      }
+      return await getLoadData(loadfile, loop-1)
     }
-
-    if (haslist.length > 0) {
-      if (args.encodeJson) {
-        console.log( encodeURIComponent(JSON.stringify(haslist)) )
-      }
-      else if (args.json) {
-        console.log(JSON.stringify(haslist))
-      } else {
-        console.log(haslist.join('|'))
-      }
-    }
-
-    process.exit(0)
+    console.error(err.message)
+    process.exit(1)
   }
-
-  let tables = fmtLoadTable(ld)
-  if (tables.length === 1) {
-    process.exit(0)
-  }
-
-  if (args.user) {
-    console.log(`------ User[${args.user}] ------`)
-  }
-
-  for (let l of tables) {
-    console.log(l.join(''))
-  }
-} catch (err) {
-  console.error(err)
-  process.exit(1)
 }
+
+;(async () => {
+  try {
+    let ld = await getLoadData(loadfile)
+
+    if (args.has) {
+      let euid = process.geteuid()
+      let haslist = []
+      for (let ch of ld.childs) {
+        if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) {
+          continue
+        }
+
+        if (args.limitUser && args.limitUser !== args.user && args.limitUser !== 'root') {
+          continue
+        }
+
+        if (args.user) {
+          haslist.push(`${args.user} ${ch.name} ${ch.pid||'-'}`)
+          //console.log(`${args.user} ${ch.name} ${ch.pid||'-'}`)
+        } else {
+          haslist.push(`root ${ch.name} ${ch.pid||'-'}`)
+          //console.log(`root ${ch.name} ${ch.pid}`)
+        }
+      }
+
+      if (haslist.length > 0) {
+        if (args.encodeJson) {
+          console.log( encodeURIComponent(JSON.stringify(haslist)) )
+        }
+        else if (args.json) {
+          console.log(JSON.stringify(haslist))
+        } else {
+          console.log(haslist.join('|'))
+        }
+      }
+
+      process.exit(0)
+    }
+
+    let tables = fmtLoadTable(ld)
+    if (tables.length === 1) {
+      process.exit(0)
+    }
+
+    if (args.user) {
+      console.log(`------ User[${args.user}] ------`)
+    }
+
+    for (let l of tables) {
+      console.log(l.join(''))
+    }
+  } catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
+
+})();

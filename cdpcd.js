@@ -183,9 +183,9 @@ cm.strong();
  * cdpc默认已经对SIGTERM、SIGALRM、SIGABRT、SIGQUIT、SIGINT进行了处理。
  * notExit开启，会直接忽略这些信号。
  */
-
-cm.setStepSlice(100);
-cm.setMaxStep(10, 25);
+cm.dynamicStep = 2
+cm.setStepSlice(100)
+cm.setMaxStep(10, 28)
 
 function addChildApp(msg, cm) {
   if (msg.config) {
