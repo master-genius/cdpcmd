@@ -65,7 +65,7 @@ for (let c of cmdlist) {
 
     case 'enable':
       try {
-        fs.rmdirSync(c.file)
+        fs.unlink(c.file)
       } catch (err) {}
       break
   }
