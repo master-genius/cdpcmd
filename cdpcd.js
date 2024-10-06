@@ -2,10 +2,21 @@
 
 process.chdir(__dirname);
 
+const npargv = require('npargv');
 const cdpc = require('cdpc');
 const cdpclog = require('./lib/cdpclog.js');
 const fs = require('fs');
 const fsp = fs.promises
+
+let arg = npargv({
+  '--debug': {
+    name: 'debug',
+    default: false,
+    type: 'boolean'
+  }
+})
+
+let args = arg.args
 
 function try_mkdir(dname) {
   let dst = true
@@ -73,38 +84,10 @@ try {
       let data = fs.readFileSync(`/proc/${cur_pid}/cmdline`, {encoding: 'utf8'});
 
       if ( preg.test(data) ) {
-        if (process.geteuid() === 0) {
-          console.error('服务已经运行。');
-          process.exit(1);
-        } else {
-          try {
-            process.kill('SIGTERM', cur_pid)
-            process.nextTick(() => {
-              try {
-                process.kill('SIGKILL', cur_pid)
-              } catch (err) {
-                console.error(`无法终止已经运行的服务，请手动终止`)
-                if (process.send) {
-                  process.send({
-                    op: 'log',
-                    type: 'error',
-                    message: `无法终止已经运行的服务，请手动终止`,
-                    errname: '--ERR-KILL-USER-CDPCD--'
-                  })
-                }
-              }
-            })
-          } catch (err) {
-            if (process.send) {
-              process.send({
-                op: 'log',
-                type: 'error',
-                message: `尝试使用SIGTERM信号终止运行中的服务失败`,
-                errname: '--ERR-TERM-USER-CDPCD--'
-              })
-            }
+          if (euid === 0) {
+              console.error('服务已经运行。');
+              process.exit(1);
           }
-        }
       }
 
     } catch (err) {
@@ -140,6 +123,7 @@ const cm = new cdpc({
   config: config_path,
   eventDir: event_dir,
   debug: true,
+  childDetached: euid === 0 ? false : true,
   errorHandle: clog.errorLog.bind(clog)
 });
 
@@ -194,6 +178,11 @@ if (euid === 0) {
 
 //捕获所有异常，保证服务稳定运行。但是不会做信号监听处理。
 cm.strong();
+
+/**
+ * cdpc默认已经对SIGTERM、SIGALRM、SIGABRT、SIGQUIT、SIGINT进行了处理。
+ * notExit开启，会直接忽略这些信号。
+ */
 
 cm.setStepSlice(100);
 cm.setMaxStep(10, 25);
@@ -271,12 +260,12 @@ function webServerMessage(ch) {
             addChildApp(msg, cm);
             break;
   
-          case 'forceRemove':
-            msg.name && cm.remove(msg.name);
+          case 'saveRemove':
+            msg.name && cm.safeRemove(msg.name);
             break;
   
           case 'remove':
-            msg.name && cm.safeRemove(msg.name);
+            msg.name && cm.remove(msg.name);
             break;
         }
     }
@@ -287,7 +276,7 @@ let webServer = {
   name: 'cdpcd-web-server',
   file: __dirname + '/webserver/app.js',
   restart: 'always',
-  restartDelay: 500,
+  restartDelay: 1000,
   monitor: true,
   lockReload: true,
   monitorNetData: true,
@@ -298,7 +287,7 @@ let webServer = {
   callback: webServerMessage
 }
 
-if (process.geteuid() === 0) {
+if (euid === 0) {
   setTimeout(() => {
     cm.runChilds([webServer]);
     cm.loadConfig();
