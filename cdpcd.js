@@ -152,7 +152,9 @@ const cm = new cdpc({
   errorHandle: clog.errorLog.bind(clog),
   disabledCallback: (chk) => {
     let real_list = getDisabledApp()
-    return !real_list.includes(chk.name)
+    if (real_list.includes(chk.name)) {
+      chk.disabled = true
+    }
   }
 })
 

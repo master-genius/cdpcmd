@@ -62,6 +62,7 @@ try {
 
 let _stcolor = {
   RUNNING: '\x1b[2;36m',
+  'RUNNING(D)': '\x1b[2;32m',
   PAUSE : '\x1b[2;33m',
   EXIT : '\x1b[2;37m'
 }
@@ -91,8 +92,9 @@ function fmtLine(ld) {
         break
 
       case 'state':
-        let statcolor = stateColor(ld[k])
-        textobj.state = statcolor + ('').padEnd(13 - ld[k].length, ' ')
+        let statetext = ld[k] + (ld.disabled ? '(D)' : '')
+        let statcolor = stateColor(statetext)
+        textobj.state = statcolor + ('').padEnd(16 - statetext.length, ' ')
         break
 
       case 'pid':
@@ -179,7 +181,7 @@ function fmtLoadTable(ld) {
         '  @cmd ',
         ch.command
       ])
-      
+
       tables.push([
         '  @args ',
         ch.args.join(' ')
