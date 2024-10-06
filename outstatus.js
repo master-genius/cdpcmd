@@ -88,18 +88,23 @@ function fmtLine(ld) {
   for (let k in ld) {
     switch (k) {
       case 'name':
-        textobj.name = ld[k].padEnd(29, ' ')
+        let dname = ld[k]
+        if (ld[k].length > 22) {
+          dname = ld[k].substring(0, 19) + '...'
+        }
+
+        textobj.name = dname.padEnd(23, ' ')
         break
 
       case 'state':
         let statetext = ld[k] + (ld.disabled ? '(D)' : '')
         let statcolor = stateColor(statetext)
-        textobj.state = statcolor + ('').padEnd(16 - statetext.length, ' ')
+        textobj.state = statcolor + ('').padEnd(13 - statetext.length, ' ')
         break
 
       case 'pid':
         let pidstr = ld[k].toString()
-        textobj.pid = pidstr.padEnd(13, ' ')
+        textobj.pid = pidstr.padEnd(12, ' ')
         break
 
       case 'cpu':
@@ -269,12 +274,14 @@ async function getLoadData(loadfile, loop=10) {
     }
 
     if (args.user) {
-      console.log(`------ User[${args.user}] ------`)
+      let user_title = (`------ User ------ [${args.user}]`).padEnd(60, ' ')
+      console.log(`\x1b[7m${user_title}\x1b[0m`)
     }
 
     for (let l of tables) {
       console.log(l.join(''))
     }
+    console.log('')
   } catch (err) {
     console.error(err)
     process.exit(1)

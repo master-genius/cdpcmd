@@ -303,7 +303,7 @@ case $1 in
 
     enable)
         check_args2_exit $# 2
-        handle_app disable $ARGS
+        handle_app enable $ARGS
         ;;
 
     load)

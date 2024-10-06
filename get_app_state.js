@@ -14,10 +14,9 @@ const npargv = require('npargv')
 
 let arg = npargv({
   '@command': [
-    'start', 'stop', 'restart', 'pause', 'resume', 'remove'
+    'start', 'stop', 'restart', 'pause', 'resume', 'remove', 'disable', 'enable'
   ],
 })
-
 
 let args = arg.args
 
@@ -52,7 +51,15 @@ async function get_state(statefile, appname, user) {
     case 'stop':
       regex = new RegExp('^exit')
       break
-  
+
+    case 'disable':
+      regex = /\(disabled\)/i
+      break
+
+    case 'enable':
+      regex = /^(?!.*disabled).*$/i
+      break
+
     case 'restart':
       regex = [
         new RegExp('^exit'),
