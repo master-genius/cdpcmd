@@ -181,6 +181,16 @@ handle_app() {
         fi
     done
 
+    case $1 in
+        disable)
+            node $CDPC_INS_DIR/disable-or-enable.js disable $HAS_RESULT
+            ;;
+
+        enable)
+            node $CDPC_INS_DIR/disable-or-enable.js enable $HAS_RESULT
+            ;;
+    esac
+
     node $CDPC_INS_DIR/get_app_state.js $1 $HAS_RESULT
 }
 

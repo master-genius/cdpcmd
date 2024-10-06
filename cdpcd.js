@@ -318,6 +318,12 @@ let webServer = {
   callback: webServerMessage
 }
 
+process.on('exit', code => {
+  try {
+    fs.unlinkSync(loadfile)
+  } catch (err) {}
+})
+
 if (euid === 0) {
   setTimeout(() => {
     cm.runChilds([webServer]);
