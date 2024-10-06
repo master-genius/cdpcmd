@@ -200,9 +200,6 @@ function fmtLoadTable(ld) {
   return tables
 }
 
-let loadData = ''
-let ld = []
-
 async function getLoadData(loadfile, loop=10) {
   try {
     let loadData = fs.readFileSync(loadfile, {encoding: 'utf8'})
