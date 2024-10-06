@@ -65,10 +65,10 @@ for (let c of cmdlist) {
 
     case 'enable':
       try {
-        console.log(c.file)
+        fs.accessSync(c.file)
         fs.unlinkSync(c.file)
       } catch (err) {
-        console.error(err)
+        //console.error(err)
       }
       break
   }
