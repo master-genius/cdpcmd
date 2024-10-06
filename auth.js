@@ -110,9 +110,6 @@ function authUser(uname, cgroup) {
             stdio: ['ignore', 'ignore', 'ignore', 'ipc']
           },
           monitor: true,
-          only: true,
-          onlyArgs: ['--uid', ${au.uid}],
-          force: true,
           callback: (ch, cm) => {
             ch.on('error', err => {
               cm.errorHandle(err, '--CHILD--')
