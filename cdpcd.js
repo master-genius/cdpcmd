@@ -326,11 +326,11 @@ process.on('exit', code => {
 
 if (euid === 0) {
   setTimeout(() => {
-    cm.runChilds([webServer]);
-    cm.loadConfig();
-    cm.monitorStart();
-  }, 235);
+    cm.runChilds([webServer])
+    cm.loadConfig()
+    cm.monitorStart()
+  }, 235)
 } else {
-  cm.loadConfig();
-  cm.monitorStart();
+  cm.loadConfig()
+  cm.monitorStart()
 }
