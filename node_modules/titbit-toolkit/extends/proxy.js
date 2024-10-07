@@ -1,8 +1,8 @@
 'use strict';
 
-const urlparse = require('url');
-const http = require('http');
-const https = require('https');
+const urlparse = require('node:url');
+const http = require('node:http');
+const https = require('node:https');
 
 /**
  * {
@@ -24,35 +24,37 @@ class Proxy {
 
   constructor(options = {}) {
 
-    this.methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH', 'TRACE'];
+    this.methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH', 'TRACE']
 
-    this.hostProxy = {};
+    this.hostProxy = {}
 
-    this.proxyBalance = {};
+    this.proxyBalance = {}
 
-    this.pathTable = {};
+    this.pathTable = {}
 
-    this.config = {};
+    this.config = {}
 
-    this.urlpreg = /(unix|http|https):\/\/[a-zA-Z0-9\-\_]+/;
+    this.urlpreg = /(unix|http|https):\/\/[a-zA-Z0-9\-\_]+/
 
-    this.maxBody = 50000000;
+    this.maxBody = 50000000
 
     //是否启用全代理模式。
-    this.full = false;
+    this.full = false
 
-    this.timeout = 10000;
+    this.timeout = 10000
 
-    this.addIP = false;
+    this.addIP = false
 
-    this.debug = false;
+    this.debug = false
+
+    this.autoClearListeners = false
 
     //记录定时器
-    this.proxyIntervals = {};
+    this.proxyIntervals = {}
 
     this.connectOptions = {
       family: 4
-    };
+    }
 
     this.error = {
       '502' : `<!DOCTYPE html><html>
@@ -82,99 +84,99 @@ class Proxy {
             </div>
           </body>
       </html>` 
-    };
+    }
 
     if (typeof options !== 'object') {
-      options = {};
+      options = {}
     }
 
     for (let k in options) {
       switch (k) {
         case 'host':
         case 'config':
-          this.config = options[k];
-          break;
+          this.config = options[k]
+          break
 
         case 'methods':
-          if (options[k] instanceof Array)
-            this.methods = options[k];
-          break;
+          Array.isArray(options[k]) && (this.methods = options[k]);
+          break
 
         case 'maxBody':
           if (typeof options[k] == 'number' && parseInt(options[k]) >= 0) {
-            this.maxBody = parseInt(options[k]);
+            this.maxBody = parseInt(options[k])
           }
-          break;
+          break
       
         case 'full':
         case 'debug':
-          this.full = !!options[k];
-          break;
+        case 'autoClearListeners':
+          this[k] = !!options[k]
+          break
 
         case 'timeout':
           if (typeof options[k] === 'number' && options[k] >= 0) {
-            this.timeout = options[k];
+            this.timeout = options[k]
           }
-          break;
+          break
 
         case 'addIP':
-          this.addIP = options[k];
-          break;
+          this.addIP = options[k]
+          break
 
         case 'connectOptions':
           if (options[k] && typeof options[k] === 'object') {
-            for (let o in options[k]) this.connectOptions[o] = options[k][o];
+            for (let o in options[k]) this.connectOptions[o] = options[k][o]
           }
-          break;
+          break
 
         default:;
       }
     }
 
-    this.setHostProxy(this.config);
-
+    this.setHostProxy(this.config)
   }
 
   fmtpath(path) {
-    path = path.trim();
+    path = path.trim()
+
     if (path.length == 0) {
-      return '/*';
+      return '/*'
     }
 
     if (path[0] !== '/') {
-      path = `/${path}`;
+      path = `/${path}`
     }
 
     if (path.length > 1 && path[path.length - 1] !== '/') {
-      path = `${path}/`;
+      path = `${path}/`
     }
 
     if (path.indexOf('/:') >= 0) {
-      return path.substring(0, path.length-1);
+      return path.substring(0, path.length-1)
     }
 
-    return `${path}*`;
+    return `${path}*`
   }
 
   setHostProxy(cfg) {
     if (typeof cfg !== 'object') {
-      return;
+      return
     }
 
-    let pt = '';
-    let tmp = '';
-    let backend_obj = null;
+    let pt = ''
+    let tmp = ''
+    let backend_obj = null
 
     for (let k in cfg) {
 
       if (typeof cfg[k] === 'string') {
-        cfg[k] = [ { path : '/', url : cfg[k] } ];
+        cfg[k] = [ { path : '/', url : cfg[k] } ]
 
       } else if (!(cfg[k] instanceof Array) && typeof cfg[k] === 'object') {
-        cfg[k] = [ cfg[k] ];
+        cfg[k] = [ cfg[k] ]
 
       } else if ( !(cfg[k] instanceof Array) ) {
-        continue;
+        continue
       }
       /**
        * {
@@ -184,148 +186,150 @@ class Proxy {
        *    headers : {}
        * }
        */
-      for (let i = 0; i < cfg[k].length; i++) {
-        tmp = cfg[k][i];
+        for (let i = 0; i < cfg[k].length; i++) {
+          tmp = cfg[k][i]
 
-        if (typeof tmp !== 'object' || (tmp instanceof Array) ) {
-          console.error(`${k} ${JSON.stringify(tmp)} 错误的配置格式`);
-          continue;
-        }
-
-        if (tmp.path === undefined) {
-          tmp.path = '/';
-        }
-
-        if (tmp.url === undefined) {
-          console.error(`${k} ${tmp.path}：没有指定要代理转发的url。`);
-          continue;
-        }
-
-        if (this.urlpreg.test(tmp.url) === false) {
-          console.error(`${tmp.url} : 错误的url，请检查。`);
-          continue;
-        }
-
-        pt = this.fmtpath(tmp.path);
-  
-        if (tmp.url[ tmp.url.length - 1 ] == '/') {
-          tmp.url = tmp.url.substring(0, tmp.url.length - 1);
-        }
-  
-        if (tmp.headers !== undefined) {
-          if (typeof tmp.headers !== 'object') {
-            console.error(`${k} ${tmp.url} ${tmp.path}：headers属性要求是object类型，使用key-value形式提供。`);
-            continue;
-          }
-        }
-
-        if (this.hostProxy[k] === undefined) {
-          this.hostProxy[k] = {};
-          this.proxyBalance[k] = {};
-        }
-  
-        tmp.urlobj = this.parseUrl(tmp.url);
-
-        tmp.urlobj.timeout = tmp.timeout || this.timeout;
-
-        backend_obj = {
-          url : tmp.url,
-          urlobj : tmp.urlobj,
-          headers : {},
-          path : tmp.path,
-          weight: 1,
-          weightCount : 0,
-          alive : true,
-          aliveCheckInterval : 5,
-          aliveCheckPath : '/',
-          intervalCount : 0,
-          rewrite: (tmp.rewrite && typeof tmp.rewrite === 'function') ? tmp.rewrite : null,
-          connectOptions: {...this.connectOptions}
-        };
-
-        if (tmp.connectOptions && typeof tmp.connectOptions) {
-          for (let o in tmp.connectOptions) {
-            backend_obj.connectOptions[o] = tmp.connectOptions[o];
-          }
-        }
-
-        if (tmp.headers !== undefined) {
-          for (let h in tmp.headers) {
-            backend_obj.headers[h] = tmp.headers[h];
-          }
-        }
-
-        if (typeof tmp.aliveCheckPath === 'string' && tmp.aliveCheckPath.length > 0) {
-          if (tmp.aliveCheckPath[0] !== '/') {
-            tmp.aliveCheckPath = `/${tmp.aliveCheckPath}`;
+          if (typeof tmp !== 'object' || (tmp instanceof Array) ) {
+            console.error(`${k} ${JSON.stringify(tmp)} 错误的配置格式`)
+            continue
           }
 
-          backend_obj.aliveCheckPath = tmp.aliveCheckPath;
-        }
-
-        if (tmp.weight && typeof tmp.weight === 'number' && tmp.weight > 1) {
-          backend_obj.weight = parseInt(tmp.weight);
-        }
-
-        if (tmp.aliveCheckInterval !== undefined && typeof tmp.aliveCheckInterval === 'number') {
-          if (tmp.aliveCheckInterval >= 0 && tmp.aliveCheckInterval <= 7200) {
-            backend_obj.aliveCheckInterval = tmp.aliveCheckInterval;
+          if (tmp.path === undefined) {
+            tmp.path = '/'
           }
-        }
 
-        if (this.hostProxy[k][pt] === undefined) {
-          
-          this.hostProxy[k][pt] = [ backend_obj ];
-          this.proxyBalance[k][pt] = {
-            stepIndex : 0,
-            useWeight : false
-          };
-          
-        } else if (this.hostProxy[k][pt] instanceof Array) {
-          this.hostProxy[k][pt].push(backend_obj);
-        }
+          if (tmp.url === undefined) {
+            console.error(`${k} ${tmp.path}：没有指定要代理转发的url。`)
+            continue
+          }
 
-        if (backend_obj.weight > 1) {
-          this.proxyBalance[k][pt].useWeight = true;
-        }
+          if (this.urlpreg.test(tmp.url) === false) {
+            console.error(`${tmp.url} : 错误的url，请检查。`)
+            continue
+          }
 
-        this.pathTable[pt] = 1;
+          pt = this.fmtpath(tmp.path)
+    
+          if (tmp.url[ tmp.url.length - 1 ] == '/') {
+            tmp.url = tmp.url.substring(0, tmp.url.length - 1)
+          }
+    
+          if (tmp.headers !== undefined) {
+            if (typeof tmp.headers !== 'object') {
+              console.error(
+                `${k} ${tmp.url} ${tmp.path}：headers属性要求是object类型，使用key-value形式提供。`
+              );
+              continue
+            }
+          }
 
-      }
-    }
+          if (this.hostProxy[k] === undefined) {
+            this.hostProxy[k] = {}
+            this.proxyBalance[k] = {}
+          }
+    
+          tmp.urlobj = this.parseUrl(tmp.url)
+
+          tmp.urlobj.timeout = tmp.timeout || this.timeout
+
+          backend_obj = {
+            url : tmp.url,
+            urlobj : tmp.urlobj,
+            headers : {},
+            path : tmp.path,
+            weight: 1,
+            weightCount : 0,
+            alive : true,
+            aliveCheckInterval : 5,
+            aliveCheckPath : '/',
+            intervalCount : 0,
+            rewrite: (tmp.rewrite && typeof tmp.rewrite === 'function') ? tmp.rewrite : null,
+            connectOptions: {...this.connectOptions}
+          }
+
+          if (tmp.connectOptions && typeof tmp.connectOptions) {
+            for (let o in tmp.connectOptions) {
+              backend_obj.connectOptions[o] = tmp.connectOptions[o]
+            }
+          }
+
+          if (tmp.headers !== undefined) {
+            for (let h in tmp.headers) {
+              backend_obj.headers[h] = tmp.headers[h]
+            }
+          }
+
+          if (typeof tmp.aliveCheckPath === 'string' && tmp.aliveCheckPath.length > 0) {
+            if (tmp.aliveCheckPath[0] !== '/') {
+              tmp.aliveCheckPath = `/${tmp.aliveCheckPath}`
+            }
+
+            backend_obj.aliveCheckPath = tmp.aliveCheckPath
+          }
+
+          if (tmp.weight && typeof tmp.weight === 'number' && tmp.weight > 1) {
+            backend_obj.weight = parseInt(tmp.weight)
+          }
+
+          if (tmp.aliveCheckInterval !== undefined && typeof tmp.aliveCheckInterval === 'number') {
+            if (tmp.aliveCheckInterval >= 0 && tmp.aliveCheckInterval <= 7200) {
+              backend_obj.aliveCheckInterval = tmp.aliveCheckInterval
+            }
+          }
+
+          if (this.hostProxy[k][pt] === undefined) {
+            
+            this.hostProxy[k][pt] = [ backend_obj ]
+            this.proxyBalance[k][pt] = {
+              stepIndex : 0,
+              useWeight : false
+            }
+            
+          } else if (this.hostProxy[k][pt] instanceof Array) {
+            this.hostProxy[k][pt].push(backend_obj)
+          }
+
+          if (backend_obj.weight > 1) {
+            this.proxyBalance[k][pt].useWeight = true
+          }
+
+          this.pathTable[pt] = 1
+        } //end sub for
+    } // end for
   }
 
   parseUrl(url) {
-    let u = new urlparse.URL(url);
+    let u = new urlparse.URL(url)
+
     let urlobj = {
-      hash :    u.hash,
-      hostname :  u.hostname,
-      protocol :  u.protocol,
-      path :    u.pathname,
-      method :  'GET',
+      hash    :    u.hash,
+      hostname:  u.hostname,
+      protocol:  u.protocol,
+      path    :    u.pathname,
+      method  :  'GET',
       headers : {},
-    };
+    }
 
     if (u.search.length > 0) {
-      urlobj.path += u.search;
+      urlobj.path += u.search
     }
     
     if (u.protocol  === 'unix:') {
-      urlobj.protocol = 'http:';
-      let sockarr = u.pathname.split('.sock');
-      urlobj.socketPath = `${sockarr[0]}.sock`;
-      urlobj.path = sockarr[1];
+      urlobj.protocol = 'http:'
+      let sockarr = u.pathname.split('.sock')
+      urlobj.socketPath = `${sockarr[0]}.sock`
+      urlobj.path = sockarr[1]
     } else {
-      urlobj.host = u.host;
-      urlobj.port = u.port;
+      urlobj.host = u.host
+      urlobj.port = u.port
     }
   
     if (u.protocol === 'https:') {
-      urlobj.requestCert = false;
-      urlobj.rejectUnauthorized = false;
+      urlobj.requestCert = false
+      urlobj.rejectUnauthorized = false
     }
   
-    return urlobj;
+    return urlobj
   }
 
   copyUrlobj(uobj) {
@@ -337,264 +341,274 @@ class Proxy {
       method :  'GET',
       headers : {},
       timeout : uobj.timeout
-    };
+    }
 
     if (uobj.host) {
-      u.host = uobj.host;
-      u.port = uobj.port;
+      u.host = uobj.host
+      u.port = uobj.port
     } else {
-      u.socketPath = uobj.socketPath;
+      u.socketPath = uobj.socketPath
     }
 
     if (uobj.protocol === 'https:') {
-      u.requestCert = false;
-      u.rejectUnauthorized = false;
+      u.requestCert = false
+      u.rejectUnauthorized = false
     }
 
-    return u;
+    return u
   }
 
   getBackend(c, host) {
-    let prlist = this.hostProxy[host][c.routepath];
-    let pb = this.proxyBalance[host][c.routepath];
-    let pr;
+    let prlist = this.hostProxy[host][c.routepath]
+    let pb = this.proxyBalance[host][c.routepath]
+    let pr
 
     if (prlist.length === 1) {
-      pr = prlist[0];
+      pr = prlist[0]
     } else {
       if (pb.stepIndex >= prlist.length) {
-        pb.stepIndex = 0;
+        pb.stepIndex = 0
       }
 
-      pr = prlist[pb.stepIndex];
+      pr = prlist[pb.stepIndex]
 
       if (pb.useWeight) {
         if (pr.weightCount >= pr.weight) {
-          pr.weightCount = 0;
-          pb.stepIndex += 1;
+          pr.weightCount = 0
+          pb.stepIndex++
         } else {
-          pr.weightCount += 1;
+          pr.weightCount++
         }
       } else {
-        pb.stepIndex += 1;
+        pb.stepIndex++
       }
     }
 
     if (pr.alive === false) {
       for (let i = 0; i < prlist.length; i++) {
         
-        pr = prlist[i];
+        pr = prlist[i]
 
         if (pr.alive === true) {
-          return pr;
+          return pr
         }
       }
-      return null;
+      return null
     }
 
-    return pr;
+    return pr
   }
 
   midhost() {
-    let self = this;
-    let timeoutError = new Error('request timeout');
-    timeoutError.code = 'ETIMEOUT';
+    let self = this
+    let timeoutError = new Error('request timeout')
+    timeoutError.code = 'ETIMEOUT'
 
     return async (c, next) => {
 
-      let host = c.host;
+      let host = c.host
 
-      let hind = c.host.length - 1;
+      let hind = c.host.length - 1
 
       if (hind > 4) {
-        let eind = hind - 5;
+        let eind = hind - 5
   
         while (hind >= eind) {
           if (c.host[hind] === ':') {
-            host = c.host.substring(0, hind);
-            break;
+            host = c.host.substring(0, hind)
+            break
           }
     
-          hind -= 1;
+          hind--
         }
       }
       
       if (self.hostProxy[host]===undefined || self.hostProxy[host][c.routepath]===undefined) {
         if (self.full) {
-          return c.status(502).send(self.error['502']);
+          return c.status(502).send(self.error['502'])
         }
-        return await next();
+        return await next()
       }
 
-      let pr = self.getBackend(c, host);
+      let pr = self.getBackend(c, host)
 
       if (pr === null) {
-        await new Promise((rv, rj) => {setTimeout(rv, 100)});
-        pr = self.getBackend(c, host);
+        await new Promise((rv, rj) => {setTimeout(rv, 100)})
+        pr = self.getBackend(c, host)
 
         if (pr === null)
-          return c.status(503).send(self.error['503']);
+          return c.status(503).send(self.error['503'])
       }
 
-      let urlobj = self.copyUrlobj(pr.urlobj);
+      let urlobj = self.copyUrlobj(pr.urlobj)
 
-      urlobj.path = c.request.url;
-      urlobj.headers = c.headers;
-      urlobj.method = c.method;
+      urlobj.path = c.request.url
+      urlobj.headers = c.headers
+      urlobj.method = c.method
 
       if (self.addIP && urlobj.headers['x-real-ip']) {
-        urlobj.headers['x-real-ip'] += `,${c.ip}`;
+        urlobj.headers['x-real-ip'] += `,${c.ip}`
       } else {
-        urlobj.headers['x-real-ip'] = c.ip;
+        urlobj.headers['x-real-ip'] = c.ip
       }
 
-      let hci = urlobj.protocol == 'https:' ? https : http;
+      let hci = urlobj.protocol == 'https:' ? https : http
 
       for (let k in pr.connectOptions) {
-        urlobj[k] = pr.connectOptions[k];
+        urlobj[k] = pr.connectOptions[k]
       }
 
       if (pr.rewrite) {
-        let rw = pr.rewrite(c, c.request.url);
+        let rw = pr.rewrite(c, c.request.url)
         
         if (rw) {
-          let path_typ = typeof rw;
+          let path_typ = typeof rw
           if (path_typ === 'string') {
-            urlobj.path = rw;
+            urlobj.path = rw
           } else if (path_typ === 'object' && rw.redirect) {
-            return c.setHeader('location', rw.redirect);
+            return c.setHeader('location', rw.redirect)
           }
         }
       }
 
-      let h = hci.request(urlobj);
+      let h = hci.request(urlobj)
 
       h.on('timeout', () => {
-        h.destroy(timeoutError);
-      });
+        !h.destroyed && h.destroy(timeoutError)
+      })
 
       return await new Promise((rv, rj) => {
+        let resolved = false
+        let rejected = false
+
+        h.on('close', () => {
+          !resolved && !rejected && (resolved = true) && rv()
+        })
+
         h.on('response', res => {
-          
-          c.status(res.statusCode);
+          c.status(res.statusCode)
 
           for (let k in res.headers) {
-            c.setHeader(k, res.headers[k]);
+            c.setHeader(k, res.headers[k])
           }
     
           res.on('data', chunk => {
-            c.response.write(chunk);
-          });
+            c.response.write(chunk)
+          })
       
           res.on('end', () => {
-            c.response.end();
-            rv();
-          });
+            c.response.end()
+            !resolved && !rejected && (resolved = true) && rv()
+          })
       
           res.on('error', err => {
-            rj(err);
-          });
-        });
+            !resolved && !rejected && (rejected = true) && rj(err)
+          })
+        })
 
         h.on('error', (err) => {
-          rj(err);
-        });
+          !resolved && !rejected && (rejected = true) && rj(err)
+        })
     
         c.request.on('data', chunk => {
-          h.write(chunk);
-        });
+          h.write(chunk)
+        })
     
         c.request.on('end', () => {
-          h.end();
-        });
+          h.end()
+        })
     
       }).catch(err => {
         self.debug && console.error(err);
         c.status(503).send(self.error['503']);
-      });
+      })
+      .finally(() => {
+        this.autoClearListeners && h.removeAllListeners && h.removeAllListeners();
+        !h.destroyed && h.destroy();
+      })
 
-    };
+    }
 
   }
 
   timerRequest(pxy) {
-    let h = http;
+    let h = http
 
     let opts = {
       timeout : this.timeout
-    };
+    }
 
     if (pxy.urlobj.protocol === 'https:') {
-      h = https;
-      opts.rejectUnauthorized = false;
-      opts.requestCert = false;
+      h = https
+      opts.rejectUnauthorized = false
+      opts.requestCert = false
     }
 
     for (let o in pxy.connectOptions) {
-      opts[o] = pxy.connectOptions[o];
+      opts[o] = pxy.connectOptions[o]
     }
 
-    let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`;
+    let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`
 
     h.get(aliveUrl, opts, res => {
       
       res.on('error', err => {
-        pxy.alive = false;
+        pxy.alive = false
       })
 
-      res.on('data', chunk => {});
+      res.on('data', chunk => {})
       
       res.on('end', () => {
-        pxy.alive = true;
-      });
+        pxy.alive = true
+      })
 
     }).on('error', err => {
-      pxy.alive = false;
-    });
+      pxy.alive = false
+    })
   }
 
   setTimer(pxys) {
-    let count = 0;
+    let count = 0
 
     for (let p of pxys) {
-      if (p.aliveCheckInterval > 0) count += 1;
+      if (p.aliveCheckInterval > 0) count++
     }
 
-    if (count === 0) return null;
+    if (count === 0) return null
     
-    let self = this;
+    let self = this
 
     return setInterval(() => {
       for (let i = 0; i < pxys.length; i++) {
-        if (pxys[i].aliveCheckInterval <= 0) continue;
+        if (pxys[i].aliveCheckInterval <= 0) continue
 
-        pxys[i].intervalCount += 1;
+        pxys[i].intervalCount++
 
         if (pxys[i].intervalCount >= pxys[i].aliveCheckInterval) {
-          pxys[i].intervalCount = 0;
-          self.timerRequest(pxys[i]);
+          pxys[i].intervalCount = 0
+          self.timerRequest(pxys[i])
         }
       }
 
-    }, 1000);
+    }, 1000)
     
   }
 
   init(app) {
-    app.config.timeout = this.timeout;
+    app.config.timeout = this.timeout
 
     for (let p in this.pathTable) {
-      app.router.map(this.methods, p, async c => {}, '@titbit_proxy');
+      app.router.map(this.methods, p, async c => {}, '@titbit_proxy')
     }
 
-    app.use(this.midhost(), {pre: true, group: `titbit_proxy`});
+    app.use(this.midhost(), {pre: true, group: `titbit_proxy`})
 
     for (let k in this.hostProxy) {
 
-      this.proxyIntervals[k] = {};
+      this.proxyIntervals[k] = {}
 
       for (let p in this.hostProxy[k]) {
-        this.proxyIntervals[k][p] = this.setTimer(this.hostProxy[k][p]);
+        this.proxyIntervals[k][p] = this.setTimer(this.hostProxy[k][p])
       }
       
     }
@@ -603,4 +617,4 @@ class Proxy {
 
 }
 
-module.exports = Proxy;
+module.exports = Proxy

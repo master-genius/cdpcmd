@@ -1,9 +1,9 @@
 'use strict'
 
+const http2 = require('node:http2')
 const hiio = require('./hiio.js')
 
 let h2cli = new hiio()
-
 
 let error_502_text = `<!DOCTYPE html><html>
       <head>
@@ -54,9 +54,9 @@ function fmtpath(path) {
   return `${path}*`
 }
 
-let hiiproxy = function (options = {}) {
-  
-  if (!(this instanceof hiiproxy)) return hiiproxy(options)
+let HiiProxy = function (options = {}) {
+
+  if (!(this instanceof HiiProxy)) return HiiProxy(options)
 
   if (typeof options !== 'object') options = {}
 
@@ -119,7 +119,7 @@ let hiiproxy = function (options = {}) {
 
 }
 
-hiiproxy.prototype.fmtConfig = function (cfg, k) {
+HiiProxy.prototype.fmtConfig = function (cfg, k) {
   if (typeof cfg[k] === 'string') {
     cfg[k] = [
       { path : '/', url : cfg[k] }
@@ -129,7 +129,7 @@ hiiproxy.prototype.fmtConfig = function (cfg, k) {
   }
 }
 
-hiiproxy.prototype.checkConfig = function (tmp, k) {
+HiiProxy.prototype.checkConfig = function (tmp, k) {
 
   if (typeof tmp !== 'object' || (tmp instanceof Array) ) {
     console.error(`${k} ${JSON.stringify(tmp)} 错误的配置格式`)
@@ -170,7 +170,7 @@ hiiproxy.prototype.checkConfig = function (tmp, k) {
   return true
 }
 
-hiiproxy.prototype.checkAndSetConfig = function (backend_obj, tmp) {
+HiiProxy.prototype.checkAndSetConfig = function (backend_obj, tmp) {
   if (tmp.headers && tmp.headers.toString() === '[object Object]') {
     backend_obj.headers = {}
 
@@ -199,7 +199,7 @@ hiiproxy.prototype.checkAndSetConfig = function (backend_obj, tmp) {
 
 }
 
-hiiproxy.prototype.setHostProxy = function (cfg) {
+HiiProxy.prototype.setHostProxy = function (cfg) {
   if (typeof cfg !== 'object') return false
 
   let pt = ''
@@ -269,14 +269,13 @@ hiiproxy.prototype.setHostProxy = function (cfg) {
 
       this.pathTable[pt] = 1
 
-    }
+    } //end sub for
 
-  }
+  } //end for
 
 }
 
-hiiproxy.prototype.checkAlive = function (pr) {
-
+HiiProxy.prototype.checkAlive = function (pr) {
   if (!pr.h2Pool || !pr.h2Pool.pool[0].connected) {
     return false
   }
@@ -284,8 +283,7 @@ hiiproxy.prototype.checkAlive = function (pr) {
   return true
 }
 
-hiiproxy.prototype.getBackend = function (c, host) {
-
+HiiProxy.prototype.getBackend = function (c, host) {
   let prlist = this.hostProxy[host][c.routepath]
 
   let pxybalance = this.proxyBalance[host][c.routepath]
@@ -311,7 +309,6 @@ hiiproxy.prototype.getBackend = function (c, host) {
     } else {
       pxybalance.stepIndex += 1
     }
-  
   }
 
   if ( !this.checkAlive(pr) ) {
@@ -331,7 +328,7 @@ hiiproxy.prototype.getBackend = function (c, host) {
   return pr
 }
 
-hiiproxy.prototype.mid = function () {
+HiiProxy.prototype.mid = function () {
   let self = this
 
   let timeoutError = new Error('request timeout')
@@ -353,7 +350,7 @@ hiiproxy.prototype.mid = function () {
           break
         }
   
-        hind -= 1
+        hind--
       }
     }
 
@@ -389,6 +386,7 @@ hiiproxy.prototype.mid = function () {
 
       if (pr.rewrite) {
         let rpath = pr.rewrite(c, c.headers[':path'])
+
         if (rpath) {
           let path_typ = typeof rpath
           if (path_typ === 'object' && rpath.redirect) {
@@ -400,15 +398,24 @@ hiiproxy.prototype.mid = function () {
       }
 
       await new Promise((rv, rj) => {
-
         let stm = hii.session.request(c.headers)
+        let resolved = false
+        let rejected = false
 
         stm.setTimeout(pr.timeout, () => {
-          stm.close()
+          stm.close(http2.constants.NGHTTP2_CANCEL)
         })
 
         stm.on('aborted', err => {
-          rj(err)
+          !resolved && !rejected && (rejected = true) && rj(err)
+        })
+
+        stm.on('close', () => {
+          if (stm.rstCode === http2.constants.NGHTTP2_NO_ERROR) {
+            !resolved && !rejected && (resolved = true) && rv()            
+          } else {
+            !resolved && !rejected && (rejected = true) && rj()
+          }
         })
 
         stm.on('response', (headers, flags) => {
@@ -416,13 +423,13 @@ hiiproxy.prototype.mid = function () {
         })
 
         stm.on('frameError', err => {
-          stm.close()
-          rj(err)
+          stm.close(http2.constants.NGHTTP2_FRAME_SIZE_ERROR)
+          //!resolved && !rejected && (rejected = true) && rj(err)
         })
-      
+
         stm.on('error', err => {
-          stm.close()
-          rj(err)
+          stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
+          //!resolved && !rejected && (rejected = true) && rj(err)
         })
 
         c.request.on('data', chunk => {
@@ -439,7 +446,7 @@ hiiproxy.prototype.mid = function () {
 
         stm.on('end', () => {
           stm.close()
-          rv(true)
+          !resolved && !rejected && (resolved = true) && rv()
         })
 
       })
@@ -452,8 +459,7 @@ hiiproxy.prototype.mid = function () {
 
 }
 
-hiiproxy.prototype.init =function (app) {
-
+HiiProxy.prototype.init =function (app) {
   app.config.timeout = this.timeout
 
   for (let p in this.pathTable) {
@@ -467,4 +473,4 @@ hiiproxy.prototype.init =function (app) {
 
 }
 
-module.exports = hiiproxy
+module.exports = HiiProxy
