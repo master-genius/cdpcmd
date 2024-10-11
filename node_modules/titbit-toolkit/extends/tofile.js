@@ -1,7 +1,7 @@
 'use strict';
 
-const fs = require('fs')
-const crypto = require('crypto')
+const fs = require('node:fs')
+const crypto = require('node:crypto')
 
 function extName(fname) {
   let ind = fname.length - 2

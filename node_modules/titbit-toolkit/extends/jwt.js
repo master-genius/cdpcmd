@@ -22,9 +22,9 @@
  * 
  */
 
-const randstring = require('./__randstring')
+const randstring = require('./__randstring.js')
 
-const crypto = require('crypto')
+const crypto = require('node:crypto')
 
 class JWT {
 

@@ -1,7 +1,7 @@
 'use strict';
 
-const fs = require('fs')
-const tls = require('tls')
+const fs = require('node:fs')
+const tls = require('node:tls')
 
 class SNI {
   constructor(certs = {}) {

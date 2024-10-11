@@ -1,7 +1,7 @@
 'use strict'
 
-const fs = require('fs')
-const crypto = require('crypto')
+const fs = require('node:fs')
+const crypto = require('node:crypto')
 
 /*
   这个模块用于titbit框架的登录会话，调用一定要在cookie中间件之后。

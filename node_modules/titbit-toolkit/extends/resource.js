@@ -2,8 +2,8 @@
 
 //const fs = require('fs');
 
-const zlib = require('zlib');
-const fs = require('fs');
+const zlib = require('node:zlib');
+const fs = require('node:fs');
 
 const fsp = fs.promises;
 

@@ -1,6 +1,6 @@
 'use strict'
 
-const cluster = require('cluster')
+const cluster = require('node:cluster')
 
 class MixLogger {
 

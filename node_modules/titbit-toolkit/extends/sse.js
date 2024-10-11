@@ -78,7 +78,7 @@ function fmtMessage(msg, withEnd = true) {
 
 class SSE {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
     this.timer = null
     this.handle = null
     this.timeSlice = 1000
