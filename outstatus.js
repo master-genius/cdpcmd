@@ -142,6 +142,18 @@ function matchAppName(name, applist, user='') {
   return false
 }
 
+function fmtLimit(val, key) {
+  let num_1M = 1024 * 1024
+  switch (key) {
+    case 'maxrss':
+    case 'rssOffset':
+      if (val <= num_1M) return `${parseFloat(val / 1024).toFixed(2)}K`
+      return `${parseFloat(val / num_1M).toFixed(2)}M`
+  }
+
+  return val
+}
+
 function fmtLoadTable(ld) {
   let tableHead = {
     //最长28个字符
@@ -206,7 +218,7 @@ function fmtLoadTable(ld) {
 
         keys.forEach(x => {
           if (ch.limit[x] !== undefined && ch.limit[x] > 0) {
-            limits.push(`    ${x}: ${ch.limit[x]}`)
+            limits.push(`    ${x}: ${fmtLimit(ch.limit[x], x)}`)
           }
         })
 
