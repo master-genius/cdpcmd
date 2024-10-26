@@ -7,7 +7,7 @@ if (process.geteuid() > 0) {
 }
 
 const fs = require('fs')
-const getuser = require('./lib/getuser.js')
+const getuser = require('./lib/getuser.js').getUser
 const npargv = require('npargv')
 
 let cgrouplist = [
@@ -92,14 +92,22 @@ function authUser(uname, cgroup) {
       try {
         fs.writeFileSync(`./uauth/${au.user}`, au.home, {encoding: 'utf8'})
         
-        let ucfg = `'use strict'\nmodule.exports = {
+        let ucfg = `'use strict'
+        let uid = ${au.uid}
+        let gid = ${au.gid}
+        //防止用户更改id，重新获取
+        const {getUser} = require('../lib/getuser.js')
+        let real_user = getUser('${au.user}')
+        real_user && (uid = real_user.uid)
+
+        module.exports = {
           name : 'cdpcd-${au.user}',
-          args: ['--uid', ${au.uid}],
+          args: ['--uid', uid],
           file : '${__dirname}/cdpcd.js',
           cgroup: '${cgroup}',
           options: {
-            uid: ${au.uid},
-            gid: ${au.gid},
+            uid: uid,
+            gid: gid,
             env : {
               SHELL: '${process.env.SHELL}',
               USER: '${au.user}',

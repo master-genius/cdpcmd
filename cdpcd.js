@@ -1,11 +1,19 @@
 'use strict';
 
+/**
+ * 未授权用户不能直接运行此脚本，这可能会导致一些冲突。
+ * 并且未授权的用户本来就不具备运行并管理服务的权限。
+ * 因此，脚本启动必须要检测是否已经授权。
+ */
+
 process.chdir(__dirname);
 
 const npargv = require('npargv');
 const cdpc = require('cdpc');
 const cdpclog = require('./lib/cdpclog.js');
+const {getUserTable} = require('./lib/getuser.js');
 const fs = require('fs');
+
 const fsp = fs.promises
 
 let arg = npargv({
@@ -13,7 +21,20 @@ let arg = npargv({
     name: 'debug',
     default: false,
     type: 'boolean'
+  },
+
+  '--uid': {
+    name: 'uid',
+    default: 0,
+    type: 'int',
+    min: 0
+  },
+
+  '--user': {
+    name: 'string',
+    default: ''
   }
+
 })
 
 let args = arg.args
@@ -48,6 +69,26 @@ let logdir = __dirname + '/logs';
 let preg = /node.*\/usr\/local\/cdpc\/cdpcd\.js/i;
 
 let euid = process.geteuid();
+
+let {idtable, nametable} = getUserTable()
+let username = 'root'
+
+if (euid > 0) {
+  let cur_user = idtable[euid]
+  if (!cur_user) {
+    console.error(`用户 uid:${euid} 不存在，请先创建该用户。`)
+    process.exit(1)
+  }
+
+  username = cur_user.user
+
+  try {
+    fs.accessSync(`${__dirname}/uauth/${username}`)
+  } catch (err) {
+    console.error(`用户 ${username} 没有被授权。`)
+    process.exit(1)
+  }
+}
 
 if (euid > 0) {
   let local_path = `${process.env.HOME}/.local/cdpc`;
@@ -136,6 +177,44 @@ function getDisabledApp() {
   return disabledApp.list
 }
 
+//检测并设定某个用户的应用的内存限制
+function checkAndSetLimit(chk, limitobj) {
+  let limit_keys = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
+
+  let common_limit = {}
+  for (let k of limit_keys) {
+    if (limitobj[k] !== undefined && typeof limitobj[k] === 'number' && !isNaN(limitobj[k])) {
+      common_limit[k] = limitobj[k]
+    }
+  }
+
+  //如果存在通用的则采用通用的，否则采用精确的app控制。
+  let lm = common_limit
+  if (limitobj.app && limitobj.app[chk.name] && typeof limitobj.app[chk.name] === 'object') {
+    lm = limitobj.app[chk.name]
+
+    for (let k in common_limit) {
+      if (lm[k] === undefined) {
+        lm[k] = common_limit[k]
+      }
+    }
+  }
+
+  if (Object.keys(lm).length <= 0) return false;
+
+  for (let x of limit_keys) {
+    !chk.limit && (chk.limit = {});
+
+    if ( (lm[x] !== undefined) && (typeof lm[x] === 'number') && !isNaN(lm[x]) ) {
+      ;((chk.limit[x] === undefined) || (chk.limit[x] > lm[x]))
+        &&
+      (chk.limit[x] = lm[x]);
+    }
+  }
+
+  return lm
+}
+
 /**
  * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。
  * notExitButSpread设置为true，可以在不退出的情况下扩散信号。
@@ -154,6 +233,17 @@ const cm = new cdpc({
     let real_list = getDisabledApp()
     if (real_list.includes(chk.name)) {
       chk.disabled = true
+    }
+
+    //检测并设定相关limit
+    try {
+      let limit_path = __dirname + '/limit/' + username + '.js'
+      fs.accessSync(limit_path)
+      let limitobj = require(limit_path)
+      limitobj && typeof limitobj === 'object' && checkAndSetLimit(chk, limitobj)
+    } catch (err) {
+      args.debug && err.code !== 'ENOENT' && console.error(err)
+      clog.errorLog(err, '--ERR-SET-LIMIT--')
     }
   }
 })

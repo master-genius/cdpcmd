@@ -200,6 +200,19 @@ function fmtLoadTable(ld) {
         ])
       }
 
+      if (ch.limit) {
+        let keys = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
+        let limits = ['  @limit:']
+
+        keys.forEach(x => {
+          if (ch.limit[x] !== undefined && ch.limit[x] > 0) {
+            limits.push(`    ${x}: ${ch.limit[x]}`)
+          }
+        })
+
+        limits.length > 1 && tables.push([limits.join('\n')])
+      }
+
       tables.push([
         '  @cause ',
         ch.cause || '--'
