@@ -1,6 +1,6 @@
 {
   "name": "gohttp",
-  "version": "5.0.9",
+  "version": "5.1.0",
   "description": "http & https client for HTTP/1.1 and HTTP/2",
   "main": "index.js",
   "scripts": {

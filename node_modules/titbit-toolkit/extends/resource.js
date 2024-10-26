@@ -197,7 +197,6 @@ class Resource {
   }
 
   filetype(extname) {
-
     if (this.ctypeMap[extname] !== undefined) {
       return this.ctypeMap[extname]
     }
@@ -230,6 +229,7 @@ class Resource {
 
       stm.on('error', err => {
         dataBuffer = null
+        !stm.destroyed && stm.destroy()
         rj(err)
       })
 
@@ -348,7 +348,7 @@ class Resource {
         } else if (self.maxCacheSize > 0 && self.size >= self.maxCacheSize) {
 
           if (self.cacheFailed < 1000_0000)
-            self.cacheFailed += 1
+            self.cacheFailed++
 
         } else {
           self.cache.set(real_path, {

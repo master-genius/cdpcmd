@@ -18,7 +18,7 @@ var bodymaker = function (options = {}) {
   //单个文件最大上传大小
   this.maxFileSize = 1000000000;
 
-  this.mime_map = {
+  this.mimeTable = {
     'css'   : 'text/css',
     'der'   : 'application/x-x509-ca-cert',
     'gif'   : 'image/gif',
@@ -55,10 +55,20 @@ var bodymaker = function (options = {}) {
     'xls'   : 'application/vnd.ms-excel',
     'gz'    : 'application/x-gzip',
     'zip'   : 'application/zip',
-    'pdf'   : 'application/pdf'
-  };
+    'pdf'   : 'application/pdf',
 
-  this.default_mime   = 'application/octet-stream';
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc': 'application/vnd.ms-word',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+    'odp': 'application/vnd.oasis.opendocument.presentation',
+    'odt': 'application/vnd.oasis.opendocument.text',
+    'ods': 'application/vnd.oasis.opendocument.spreadsheet',
+    'odg': 'application/vnd.oasis.opendocument.graphics'
+  }
+
+  this.default_mime   = 'application/octet-stream'
 
   this.extName = function (filename = '') {
     if (filename.length < 2) return '';
@@ -68,22 +78,22 @@ var bodymaker = function (options = {}) {
     if (name_split.length < 2) return '';
     
     return name_split[name_split.length - 1];
-  };
+  }
 
   this.mimeType = function (filename) {
     var extname = this.extName(filename);
     extname = extname.toLowerCase();
-    if (extname !== '' && this.mime_map[extname] !== undefined) {
-      return this.mime_map[extname];
+    if (extname !== '' && this.mimeTable[extname] !== undefined) {
+      return this.mimeTable[extname];
     }
     return this.default_mime;
-  };
+  }
 
-};
+}
 
 bodymaker.prototype.fmtName = function (name) {
   return name.replace(/"/g, '%22');
-};
+}
 
 bodymaker.prototype.fmtFilename = function (name) {
   if (name.indexOf('/') >= 0) {
