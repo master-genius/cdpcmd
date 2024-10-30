@@ -1,6 +1,6 @@
 'use strict';
 
-const fs = require('fs')
+const fs = require('node:fs')
 
 let files = fs.readdirSync(`${__dirname}/extends/`, {withFileTypes: true})
 
@@ -25,4 +25,3 @@ for (let i = 0; i < files.length; i++) {
   }
 
 }
-

@@ -21,18 +21,18 @@
 class StreamLimit {
 
   constructor(options = {}) {
-    this.cache = new Map();
+    this.cache = new Map()
   
     if (typeof options !== 'object') {
-      options = {};
+      options = {}
     }
 
-    this.timeSlice = 1000;
+    this.timeSlice = 1000
 
     //单位时间内的最大请求次数。
-    this.maxRequest = 50;
+    this.maxRequest = 50
 
-    this.socketLife = 3600000;
+    this.socketLife = 3600000
 
     for (let k in options) {
         switch (k) {
@@ -40,89 +40,87 @@ class StreamLimit {
           case 'maxRequest':
           case 'socketLife':
             if (typeof options[k] === 'number') {
-              this[k] = options[k];
+              this[k] = options[k]
             }
-            break;
+            break
         }
     }
 
   }
 
   _sid(sess) {
-    return `${sess.socket.remoteAddress} ${sess.socket.remotePort}`;
+    return `${sess.socket.remoteAddress} ${sess.socket.remotePort}`
   }
 
   set(id) {
-
     let s = this.cache.get(id);
 
     if (!s) {
       let d = {
         time: Date.now(),
         count: 1
-      };
+      }
 
-      d.startTime = d.time;
+      d.startTime = d.time
 
-      this.cache.set(id, d);
-      return d;
+      this.cache.set(id, d)
+      return d
     }
 
-    s.count += 1;
+    s.count += 1
     
-    return s;
+    return s
   }
 
   remove(id) {
-    return this.cache.delete(id);
+    return this.cache.delete(id)
   }
 
   checkAndSet(id) {
-    let s = this.set(id);
+    let s = this.set(id)
  
-    if (s.count <= 1) return true;
+    if (s.count <= 1) return true
     
-    let tm = Date.now();
+    let tm = Date.now()
     
     if (this.socketLife > 0 && (s.startTime + this.socketLife) < tm) {
-      return null;
+      return null
     }
 
     if ( (s.time + this.timeSlice) > tm ) {
       if (this.maxRequest > 0 && s.count > this.maxRequest) {
-        return false;
+        return false
       }
     } else {
-      s.count = 1;
-      s.time = tm;
+      s.count = 1
+      s.time = tm
     }
 
-    return true;
+    return true
   }
 
   init(app) {
     app.on('session', session => {
 
-        let id = this._sid(session);
+        let id = this._sid(session)
 
         session.socket && session.socket.on('close', () => {
-            this.remove(id);
-        });
+            this.remove(id)
+        })
 
         session.on('stream', stm => {
-          let st = this.checkAndSet(id);
+          let st = this.checkAndSet(id)
           if (st === null) {
             session.close(() => {
-              !session.destroyed && session.destroy();
-            });
+              !session.destroyed && session.destroy()
+            })
           } else if (!st) {
-            session.destroy();
+            session.destroy()
           }
-        });
-    });
+        })
+    })
   }
 
 }
 
-module.exports = StreamLimit;
-
+module.exports = StreamLimit

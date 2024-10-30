@@ -1,10 +1,11 @@
 'use strict';
 
-const http = require('http');
-const https = require('https');
-const crypto = require('crypto');
-const fs = require('fs');
-const urlparse = require('url');
+const process = require('node:process');
+const http = require('node:http');
+const https = require('node:https');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const urlparse = require('node:url');
 const qs = require('./qs.js');
 const bodymaker = require('./bodymaker.js');
 const fmtpath = require('./fmtpath.js');

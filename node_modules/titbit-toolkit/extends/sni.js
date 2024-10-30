@@ -46,4 +46,3 @@ class SNI {
 }
 
 module.exports = SNI
-

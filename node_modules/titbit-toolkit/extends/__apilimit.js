@@ -152,7 +152,7 @@ class apilimit {
       //不在允许的api之内或者超出了api调用的最大限制则不会执行下一层。
       if (m.daycount > self.dayLimit || m.count > self.maxLimit) {
         c.status(429);
-        c.res.body = self.tooManyRequest;
+        c.send(self.tooManyRequest);
         return ;
       }
   

@@ -1,9 +1,10 @@
 'use strict';
 
-const http2 = require('http2')
-const crypto = require('crypto')
-const fs = require('fs')
-const urlparse = require('url')
+//const process = require('node:process');
+const http2 = require('node:http2')
+const crypto = require('node:crypto')
+const fs = require('node:fs')
+const urlparse = require('node:url')
 const qs = require('./qs.js')
 const bodymaker = require('./bodymaker.js')
 const fmtpath = require('./fmtpath.js')
