@@ -141,14 +141,14 @@ function matchAppName(name, applist, user='') {
 
   return false
 }
-
+//默认单位是KB
 function fmtLimit(val, key) {
-  let num_1M = 1024 * 1024
+  let num_1M = 1024
   switch (key) {
     case 'maxrss':
     case 'rssOffset':
-      if (val <= num_1M) return `${parseFloat(val / 1024).toFixed(2)}K`
-      return `${parseFloat(val / num_1M).toFixed(2)}M`
+      if (val <= num_1M) return `${parseFloat(val).toFixed(2)}K`
+      return `${parseFloat(val / 1024).toFixed(2)}M`
   }
 
   return val
