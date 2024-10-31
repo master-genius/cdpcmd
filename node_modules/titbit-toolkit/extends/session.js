@@ -38,6 +38,45 @@ class Session {
 
   }
 
+  init(app) {
+    let proto = app.httpServ.Content.prototype
+
+    let self = this
+
+    proto.sessionError = function (options={}) {
+      let err = self.error
+      if (options.clear) self.error = null
+      return err
+    }
+
+    proto.setSession = function (key, data) {
+      this._session[key] = data
+      this._sessionState = true
+    }
+
+    proto.getSession = function (key = null) {
+      if (key === null) {
+        return this._session
+      }
+
+      return this._session[key] || null
+    }
+
+    proto.deleteSession = function (key) {
+      delete this._session[key]
+      this._sessionState = true
+    }
+
+    proto.clearSession = function () {
+      this._sessionState = false
+      this._session = {}
+      fs.unlink(this._sessFile, (err) => {
+        err && (self.error = err)
+      })
+    }
+
+  }
+
   mid() {
     let self = this
 
@@ -45,39 +84,6 @@ class Session {
       c._session = {}
       c._sessionState = false
       c._sessFile = ''
-
-      c.sessionError = (options = {}) => {
-        let err = self.error
-        
-        if (options.clear) self.error = null
-
-        return err
-      }
-
-      c.setSession = (key, data) => {
-        c._session[key] = data
-        c._sessionState = true
-      }
-
-      c.getSession = (key = null) => {
-        if (key === null) {
-          return c._session
-        }
-        return c._session[key] || null
-      }
-
-      c.delSession = (key) => {
-        delete c._session[key]
-        c._sessionState = true
-      }
-
-      c.clearSession = () => {
-        c._sessionState = false
-        c._session = {}
-        fs.unlink(c._sessFile, (err) => {
-          err && (self.error = err)
-        })
-      }
 
       let sess_file = ''
       let sessid = c.cookie[ self.sessionKey ]
@@ -106,10 +112,9 @@ class Session {
       }
 
       if (sessid === undefined || sess_state === false) {
+        let org_name = `${c.host}_${Date.now()}__${Math.random()}`
 
-        var org_name = `${c.host}_${Date.now()}__${Math.random()}`
-
-        var hash = crypto.createHash('sha1')
+        let hash = crypto.createHash('sha1')
 
         hash.update(org_name)
 
@@ -117,7 +122,7 @@ class Session {
   
         sess_file = self.prefix + sessid
   
-        var set_cookie = `${self.sessionKey}=${sessid};`
+        let set_cookie = `${self.sessionKey}=${sessid};`
 
         if (self.expires) {
           var t = new Date(Date.now() + self.expires * 1000)
@@ -130,7 +135,7 @@ class Session {
           set_cookie += `Domain=${self.domain}`
         }
   
-        var session_path_file = `${self.sessionDir}/${sess_file}`
+        let session_path_file = `${self.sessionDir}/${sess_file}`
 
         c._sessFile = session_path_file
 
@@ -160,7 +165,6 @@ class Session {
       }
       
       c._session = null
-
     }
 
   }
