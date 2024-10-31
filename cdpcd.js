@@ -242,8 +242,8 @@ const cm = new cdpc({
       let limitobj = require(limit_path)
       limitobj && typeof limitobj === 'object' && checkAndSetLimit(chk, limitobj)
     } catch (err) {
-      args.debug && err.code !== 'ENOENT' && console.error(err)
-      clog.errorLog(err, '--ERR-SET-LIMIT--')
+      args.debug && err.code !== 'ENOENT' && console.error(err);
+      err.code !== 'ENOENT' && clog.errorLog(err, '--ERR-SET-LIMIT--')
     }
   }
 })
