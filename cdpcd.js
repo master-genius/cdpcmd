@@ -229,7 +229,7 @@ const cm = new cdpc({
   debug: true,
   childDetached: euid === 0 ? false : true,
   errorHandle: clog.errorLog.bind(clog),
-  disabledCallback: (chk) => {
+  beforeStartCallback: (chk) => {
     let real_list = getDisabledApp()
     if (real_list.includes(chk.name)) {
       chk.disabled = true
