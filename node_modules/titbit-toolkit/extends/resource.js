@@ -2,10 +2,10 @@
 
 //const fs = require('fs');
 
-const zlib = require('node:zlib');
-const fs = require('node:fs');
+const zlib = require('node:zlib')
+const fs = require('node:fs')
 
-const fsp = fs.promises;
+const fsp = fs.promises
 
 let _typemap = {
   '.css'  : 'text/css; charset=utf-8',
@@ -44,7 +44,7 @@ let _typemap = {
   '.pdf': 'application/pdf',
   '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-};
+}
 
 /**
  * 处理静态资源的请求，需要把中间件挂载到一个分组下，否则会影响全局，如果一个只做静态分发的服务则可以全局启用。
@@ -86,7 +86,7 @@ class Resource {
     this.maxFileSize = 10_000_000
 
     if (typeof options !== 'object') {
-      options = {};
+      options = {}
     }
 
     for (let k in options) {
@@ -300,7 +300,7 @@ class Resource {
             || extname === '.json'
             || ctype.indexOf('font/') === 0)
         {
-          data = await c.helper.readb(pathfile)
+          data = await fsp.readFile(pathfile, {encoding: 'utf8'})
 
           //若文件很小，压缩后的数据很可能要比源文件还大，所以对超过1k的文件进行压缩，否则不进行压缩。
           if (data && data.length > 1024) {

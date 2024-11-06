@@ -8,7 +8,6 @@ class RealIP {
 
   mid() {
     return async (c, next) => {
-
       let realipstr = c.headers['x-real-ip'] || c.headers['x-forwarded-for'] || ''
 
       if (realipstr !== '') {

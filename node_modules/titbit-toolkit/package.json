@@ -1,6 +1,6 @@
 {
   "name": "titbit-toolkit",
-  "version": "3.8.0",
+  "version": "3.8.2",
   "description": "titbit框架的工具集，包括跨域、静态资源处理，权限过滤，请求计时，cookie，session，jwt等大量中间件",
   "main": "index.js",
   "scripts": {

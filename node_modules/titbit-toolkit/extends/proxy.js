@@ -302,11 +302,11 @@ class Proxy {
     let u = new urlparse.URL(url)
 
     let urlobj = {
-      hash    :    u.hash,
-      hostname:  u.hostname,
-      protocol:  u.protocol,
-      path    :    u.pathname,
-      method  :  'GET',
+      hash    : u.hash,
+      hostname: u.hostname,
+      protocol: u.protocol,
+      path    : u.pathname,
+      method  : 'GET',
       headers : {},
     }
 
@@ -335,12 +335,12 @@ class Proxy {
   copyUrlobj(uobj) {
     let u = {
       hash: uobj.hash,
-      hostname :  uobj.hostname,
-      protocol :  uobj.protocol,
-      path :    uobj.path,
-      method :  'GET',
-      headers : {},
-      timeout : uobj.timeout
+      hostname: uobj.hostname,
+      protocol: uobj.protocol,
+      path: uobj.path,
+      method: 'GET',
+      headers: {},
+      timeout: uobj.timeout
     }
 
     if (uobj.host) {
@@ -535,7 +535,11 @@ class Proxy {
     let h = http
 
     let opts = {
-      timeout : this.timeout
+      timeout : this.timeout,
+      method: 'TRACE',
+      headers: {
+        'user-agent': 'Node.js/Titbit,Titbit-Toolkit: Proxy,AliveCheck'
+      }
     }
 
     if (pxy.urlobj.protocol === 'https:') {
@@ -550,21 +554,29 @@ class Proxy {
 
     let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`
 
-    h.get(aliveUrl, opts, res => {
-      
+    let req = h.request(aliveUrl, opts)
+    
+    req.on('error', err => {
+      pxy.alive = false
+    })
+
+    req.on('response', res => {
+      pxy.alive = true
+
       res.on('error', err => {
         pxy.alive = false
       })
 
-      res.on('data', chunk => {})
+      res.on('data', chunk => {
+        pxy.alive = true
+      })
       
       res.on('end', () => {
         pxy.alive = true
       })
-
-    }).on('error', err => {
-      pxy.alive = false
     })
+
+    req.end()
   }
 
   setTimer(pxys) {
