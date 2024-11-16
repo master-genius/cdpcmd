@@ -205,11 +205,13 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
   let pt = ''
   let tmp = ''
   let backend_obj = null
+  let tmp_cfg
 
   for (let k in cfg) {
+    tmp_cfg = Array.isArray(cfg[k]) ? cfg[k] : [ cfg[k] ]
 
-    for (let i = 0; i < cfg[k].length; i++) {
-      tmp = cfg[k][i]
+    for (let i = 0; i < tmp_cfg.length; i++) {
+      tmp = tmp_cfg[i]
 
       if (!this.checkConfig(tmp, k)) continue
 
@@ -356,7 +358,7 @@ HiiProxy.prototype.mid = function () {
 
     if (!self.hostProxy[host] || !self.hostProxy[host][c.routepath]) {
       if (self.full) {
-        return c.send(error_502_text, 502) 
+        return c.status(502).send(error_502_text) 
       }
 
       return await next()
@@ -367,8 +369,21 @@ HiiProxy.prototype.mid = function () {
     if (pr === null) {
       pr = self.getBackend(c, host)
 
-      if (pr === null)
-        return c.send(error_503_text, 503)
+      if (pr === null) {
+        await c.ext.delay(5)
+        pr = self.getBackend(c, host)
+
+        if (!pr) {
+          await c.ext.delay(15)
+          pr = self.getBackend(c, host)
+          if (!pr) {
+            await c.ext.delay(30)
+            pr = self.getBackend(c, host)
+          }
+        }
+
+        if (!pr) return c.status(503).send(error_503_text)
+      }
     }
 
     if (self.addIP && c.headers['x-real-ip']) {
@@ -419,7 +434,7 @@ HiiProxy.prototype.mid = function () {
         })
 
         stm.on('response', (headers, flags) => {
-          c.reply.respond(headers)
+          c.reply && c.reply.writable && c.reply.respond(headers)
         })
 
         stm.on('frameError', err => {
@@ -441,7 +456,7 @@ HiiProxy.prototype.mid = function () {
         })
 
         stm.on('data', chunk => {
-          c.reply.write(chunk)
+          c.reply && c.reply.writable && c.reply.write(chunk)
         })
 
         stm.on('end', () => {
@@ -452,14 +467,14 @@ HiiProxy.prototype.mid = function () {
       })
     } catch (err) {
       self.debug && console.error(err)
-      c.send(error_503_text, 503)
+      c.status(503).send(error_503_text)
     }
 
   }
 
 }
 
-HiiProxy.prototype.init =function (app) {
+HiiProxy.prototype.init = function (app) {
   app.config.timeout = this.timeout
 
   for (let p in this.pathTable) {

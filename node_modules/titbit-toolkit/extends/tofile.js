@@ -71,7 +71,7 @@ function getFile(name, ind=0) {
   if (!this || !this.files) return null
 
   if (this.files[name] === undefined) {
-    return null
+    return ind < 0 ? [] : null
   }
 
   if (ind >= this.files[name].length) {
