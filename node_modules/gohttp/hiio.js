@@ -389,11 +389,13 @@ class _Request {
     this.session.on('close', async () => {
       this.connected = false
       if (this.keepalive && typeof this.reconn === 'function') {
-        await new Promise((rv, rj) => {
-          setTimeout(() => {
-            rv()
-          }, this.reconnDelay)
-        })
+        if (this.reconnDelay && this.reconnDelay > 0) {
+          await new Promise((rv, rj) => {
+            setTimeout(() => {
+              rv()
+            }, this.reconnDelay)
+          })
+        }
 
         if (this.connected) return
 

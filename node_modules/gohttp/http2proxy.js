@@ -231,7 +231,7 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
         weight: 1,
         weightCount : 0,
         alive : true,
-        reconnDelay : 2000,
+        reconnDelay : 0,
         max: 100,
         debug: this.debug,
         h2Pool: null,
@@ -245,12 +245,12 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
         }
       }
 
+      this.checkAndSetConfig(backend_obj, tmp)
+
       backend_obj.connectOptions.keepalive = true
       backend_obj.connectOptions.max = backend_obj.max
       backend_obj.connectOptions.reconnDelay = backend_obj.reconnDelay
       backend_obj.connectOptions.debug = backend_obj.debug
-
-      this.checkAndSetConfig(backend_obj, tmp)
 
       backend_obj.h2Pool = h2cli.connectPool(backend_obj.url, backend_obj.connectOptions)
 
@@ -366,19 +366,18 @@ HiiProxy.prototype.mid = function () {
 
     let pr = self.getBackend(c, host)
 
-    if (pr === null) {
+    if (!pr) {
       pr = self.getBackend(c, host)
 
-      if (pr === null) {
+      if (!pr) {
         await c.ext.delay(5)
         pr = self.getBackend(c, host)
 
         if (!pr) {
-          await c.ext.delay(15)
-          pr = self.getBackend(c, host)
-          if (!pr) {
-            await c.ext.delay(30)
+          for (let i = 0; i < 200; i++) {
+            await c.ext.delay(5)
             pr = self.getBackend(c, host)
+            if (pr) break
           }
         }
 
