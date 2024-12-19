@@ -125,10 +125,26 @@ class ParamCheck {
             switch(rule.to) {
               case 'int':
                 obj[k] = parseInt(obj[k])
+                if (isNaN(obj[k])) {
+                  if (rule.default !== undefined) {
+                    obj[k] = rule.default
+                    return true
+                  }
+                  ost.ok = false
+                  return false
+                }
                 break
 
               case 'float':
                 obj[k] = parseFloat(obj[k])
+                if (isNaN(obj[k])) {
+                  if (rule.default !== undefined) {
+                    obj[k] = rule.default
+                    return true
+                  }
+                  ost.ok = false
+                  return false
+                }
                 break
               
               case 'boolean':
