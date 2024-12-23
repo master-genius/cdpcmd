@@ -226,7 +226,7 @@ const cm = new cdpc({
   loadInfoType: 'json',
   config: config_path,
   eventDir: event_dir,
-  debug: true,
+  debug: args.debug,
   childDetached: euid === 0 ? false : true,
   errorHandle: clog.errorLog.bind(clog),
   beforeStartCallback: (chk) => {
@@ -413,6 +413,24 @@ process.on('exit', code => {
     fs.unlinkSync(loadfile)
   } catch (err) {}
 })
+
+/**
+ * 避免root用户的子进程发送信号导致主服务进程退出
+ */
+if (args.debug) {
+  process.on('SIGTERM', sig => {
+    console.error('Debug：收到信号 SIGTERM')
+    process.exit(0)
+  })
+
+  process.on('SIGINT', sig => {
+    console.error('Debug：收到信号 SIGINT')
+    process.exit(0)
+  })
+} else {
+  process.on('SIGTERM', sig => {})
+  process.on('SIGINT', sig => {})
+}
 
 if (euid === 0) {
   setTimeout(() => {
