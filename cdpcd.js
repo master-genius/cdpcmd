@@ -415,7 +415,7 @@ process.on('exit', code => {
 })
 
 /**
- * 避免root用户的子进程发送信号导致主服务进程退出
+ * 避免同身份用户的子进程发送信号导致主服务进程退出
  */
 if (args.debug) {
   process.on('SIGTERM', sig => {
@@ -429,7 +429,7 @@ if (args.debug) {
   })
 } else {
   process.on('SIGTERM', sig => {})
-  process.on('SIGINT', sig => {})
+  euid === 0 && process.on('SIGINT', sig => {})
 }
 
 if (euid === 0) {
