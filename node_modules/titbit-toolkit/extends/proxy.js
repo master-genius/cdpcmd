@@ -555,7 +555,7 @@ class Proxy {
 
   }
 
-  timerRequest(pxy) {
+  timerRequest(pxy, timeout=false) {
     let h = http
 
     let opts = {
@@ -582,6 +582,12 @@ class Proxy {
     
     req.on('error', err => {
       pxy.alive = false
+      //当出现连接错误，立即发起一个请求，测试是否是某些特殊情况导致的异常，比如服务重启导致瞬间请求失败。
+      if (!timeout) {
+        setTimeout(() => {
+          this.timerRequest(pxy, true)
+        }, 500)
+      }
     })
 
     req.on('response', res => {

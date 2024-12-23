@@ -360,7 +360,7 @@ class _Request {
     this.reconnDelay = options.reconnDelay || 0
     this.connected = false
     this.connecting = false
-    
+    this.goaway = false
     this.headers = null
 
     Object.defineProperty(this, '__prefix__', {
@@ -389,6 +389,11 @@ class _Request {
     this.session.on('connect', () => {
       this.connected = true
       this.connecting = false
+      this.goaway = false
+    })
+
+    this.session.on('goaway', () => {
+      this.goaway = true
     })
 
     this.session.on('close', async () => {
@@ -592,7 +597,7 @@ class _Request {
       stm.on('timeout', () => {
         ret.ok = false
         ret.timeout = true
-        stm.close()
+        stm.close(http2.constants.NGHTTP2_CANCEL)
         rv(ret)
       })
 
@@ -617,14 +622,14 @@ class _Request {
 
       stm.on('error', err => {
         stm.removeAllListeners()
-        stm.close()
+        stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
         ret.error = err
         rv(ret)
       })
 
       stm.on('frameError', err => {
         stm.removeAllListeners()
-        stm.close()
+        stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
         ret.error = err
         rv(ret)
       })
@@ -781,24 +786,18 @@ class SessionPool {
     }
   }
 
-  getSession(deep = 0) {
+  getSession() {
     if (this.pool.length <= 0) {
       return null
     }
 
-    if ( (this.step+1) >= this.pool.length) {
-      this.step = -1
+    for (let sess of this.pool) {
+      if (sess.connected && !sess.goaway) {
+        return sess
+      }
     }
 
-    this.step++
-
-    let sess = this.pool[this.step]
-
-    if (!sess.connected) {
-      if (deep < this.pool.length) return this.getSession(deep + 1)
-    }
-
-    return sess
+    return this.pool[0]
   }
 
   add(sess) {
