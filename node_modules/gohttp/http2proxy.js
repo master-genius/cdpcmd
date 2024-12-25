@@ -247,11 +247,6 @@ HiiProxy.prototype.setHostProxy = function (cfg) {
 
       this.checkAndSetConfig(backend_obj, tmp)
 
-      backend_obj.connectOptions.keepalive = true
-      backend_obj.connectOptions.max = backend_obj.max
-      backend_obj.connectOptions.reconnDelay = backend_obj.reconnDelay
-      backend_obj.connectOptions.debug = backend_obj.debug
-
       backend_obj.h2Pool = h2cli.connectPool(backend_obj.url, backend_obj.connectOptions)
 
       if (this.hostProxy[k][pt] === undefined) {
