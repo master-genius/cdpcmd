@@ -5,10 +5,10 @@
     "npargv": "^1.0.9",
     "options-check": "^1.0.1",
     "thread-worker": "^1.0.2",
-    "titbit": "^25.0.5",
+    "titbit": "^25.0.7",
     "titbit-loader": "^22.6.8",
     "titbit-token": "^2.1.3",
-    "titbit-toolkit": "^3.9.8",
+    "titbit-toolkit": "^4.0.1",
     "zipdata": "^1.0.2"
   }
 }
