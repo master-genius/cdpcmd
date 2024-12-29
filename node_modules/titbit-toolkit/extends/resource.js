@@ -59,7 +59,7 @@ class Resource {
     this.staticPath = ''
 
     //最大缓存，单位为字节，0表示不限制。
-    this.maxCacheSize = 120_000_000
+    this.maxCacheSize = 128_000_000
 
     this.size = 0
 
@@ -202,6 +202,26 @@ class Resource {
     }
 
     return 'application/octet-stream'
+  }
+
+  removeGroupCache(filepre) {
+    let keys = this.cache.keys()
+    for (let k of keys) {
+      if (k.indexOf(filepre) === 0) this.cache.delete(k)
+    }
+  }
+
+  removeNameCache(name) {
+    let keys = this.cache.keys()
+    for (let k of keys) {
+      if (k.lastIndexOf(name) >= 0) this.cache.delete(k)
+    }
+  }
+
+  removeCache(filepath) {
+    if (this.cache.has(filepath)) {
+      this.cache.delete(filepath)
+    }
   }
 
   clearCache() {

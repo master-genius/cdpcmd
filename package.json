@@ -8,7 +8,7 @@
     "titbit": "^25.0.7",
     "titbit-loader": "^22.6.8",
     "titbit-token": "^2.1.3",
-    "titbit-toolkit": "^4.0.1",
+    "titbit-toolkit": "^4.0.2",
     "zipdata": "^1.0.2"
   }
 }
