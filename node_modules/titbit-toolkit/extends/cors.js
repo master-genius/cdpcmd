@@ -30,6 +30,9 @@ class Cors {
 
   constructor(options = {}) {
     
+    //某些情况下，因为状态码是204导致连接提前关闭。
+    this.statusCode = 200;
+
     this.allow = '*';
     
     this.allowHeaders = 'authorization,content-type';
@@ -234,7 +237,7 @@ class Cors {
 
   /**
    * 要区分两种状态：跨域请求和同源请求。
-   *    在同源请求：c.headers.referer必然是包含页面路径。
+   *    在同源请求：ctx.headers.referer必然是包含页面路径。
    *    若直接请求此资源则不会返回数据。
    * 
    */
@@ -242,12 +245,15 @@ class Cors {
   mid() {
     let self = this;
 
-    return async (c, next) => {
-       //使用c.box.corsAllow控制，给中间件处理留出扩展空间。
+    return async (ctx, next) => {
+       //使用ctx.box.corsAllow控制，给中间件处理留出扩展空间。
       //跨域请求，必须存在origin。
-      if (c.headers.origin) {
-          if (!(self.allow === '*' || self.allowTable[c.headers.origin] || c.box.corsAllow) ) {
-            return;
+      if (ctx.headers.origin) {
+          if (!(self.allow === '*'
+            || self.allowTable[ctx.headers.origin]
+            || ctx.box.corsAllow) )
+          {
+            return
           }
       } else {
         /**
@@ -259,67 +265,70 @@ class Cors {
         //如果referer前缀就是host说明是本网站访问
 
         //非跨域请求，或仅仅是没有携带origin
-        let referer = c.headers.referer || '';
+        let referer = ctx.headers.referer || ''
         
         //处理同源请求。允许提交空的referer或者允许某些路由分组可以提交空referer(针对前端页面)
-        //或者是检测到c.box.corsAllow，host和referer都是客户端的控制，检测必须要依赖服务端对host的配置。
+        //或者是检测到ctx.box.corsAllow，host和referer都是客户端的控制，检测必须要依赖服务端对host的配置。
 
         if (!(
               (!referer 
-                && (self.allowEmptyReferer || (self.emptyRefererGroup && self.emptyRefererGroup.indexOf(c.group) >= 0) ) 
+                && (self.allowEmptyReferer || (self.emptyRefererGroup && self.emptyRefererGroup.indexOf(ctx.group) >= 0) ) 
               )
-              || c.box.corsAllow || (referer && self.checkReferer(referer))
+              || ctx.box.corsAllow || (referer && self.checkReferer(referer))
             )
         ) {
-          return;
+          return
         }
        
       }
 
-      let req_headers = c.headers['access-control-request-headers'];
+      let req_headers = ctx.headers['access-control-request-headers']
+
       if (req_headers && req_headers.indexOf('x-credentials') >= 0) {
         //如果前端使用了credentials为include选项，同时使用x-credentials消息头通知后台，此时要做特殊处理。
-        c.headers['x-credentials'] = 'include';
-        //c.setHeader('access-control-request-headers', req_headers);
+        ctx.headers['x-credentials'] = 'include'
+        //ctx.setHeader('access-control-request-headers', req_headers);
       }
       //服务端也要包含此消息头。
-      c.setHeader('access-control-request-headers', self.requestHeaders);
+      ctx.setHeader('access-control-request-headers', self.requestHeaders)
 
-      if (self.credentials || c.headers['x-credentials'] === 'include') {
-        let host = '*';
-        if (c.headers.origin) {
-          host = c.headers.origin;
-        } else if (c.headers.referer) {
+      if (self.credentials || ctx.headers['x-credentials'] === 'include') {
+        let host = '*'
+
+        if (ctx.headers.origin) {
+          host = ctx.headers.origin
+        } else if (ctx.headers.referer) {
           // https:// 不必搜索。
-          let ind = c.headers.referer.indexOf('/', 8);
-          if (ind < 0) 
-            host = c.headers.referer;
-          else host = c.headers.referer.substring(0, ind);
+          let ind = ctx.headers.referer.indexOf('/', 8)
+          if (ind < 0) {
+            host = ctx.headers.referer
+          } else {
+            host = ctx.headers.referer.substring(0, ind)
+          }
         }
 
-        c.setHeader('access-control-allow-credentials', 'true');
-        c.setHeader('access-control-allow-origin', host);
+        ctx.setHeader('access-control-allow-credentials', 'true')
+        ctx.setHeader('access-control-allow-origin', host)
       } else {
-        c.setHeader('access-control-allow-origin', '*');
+        ctx.setHeader('access-control-allow-origin', '*')
       }
 
-      c.setHeader('access-control-allow-methods', self.methodString);
-      c.setHeader('access-control-allow-headers', self.allowHeaders);
+      ctx.setHeader('access-control-allow-methods', self.methodString)
+      ctx.setHeader('access-control-allow-headers', self.allowHeaders)
 
       if (self.exposeHeaders)
-        c.setHeader('access-control-expose-headers', self.exposeHeaders);
-
-      if (c.method === 'OPTIONS') {
-        c.status(204);
-        self.optionsCache && c.setHeader('access-control-max-age', self.optionsCache);
+        ctx.setHeader('access-control-expose-headers', self.exposeHeaders)
+      if (ctx.method === 'OPTIONS') {
+        self.optionsCache && ctx.setHeader('access-control-max-age', self.optionsCache)
+        ctx.status(self.statusCode)
       } else {
-        return await next();
+        return await next()
       }
       
-    };
+    }
 
   }
 
 }
 
-module.exports = Cors;
+module.exports = Cors
