@@ -245,6 +245,7 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         weightCount: 0,
         reconnDelay: 0,
         max: 50,
+        maxConnect: tmp.maxConnect || 0,
         debug: this.debug,
         h2Pool: null,
         timeout: this.timeout,
@@ -275,7 +276,8 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         quiet: true,
         timeout: backend_obj.timeout,
         connectTimeout: backend_obj.connectTimeout,
-        maxAliveStreams: backend_obj.maxAliveStreams
+        maxAliveStreams: backend_obj.maxAliveStreams,
+        maxConnect: backend_obj.maxConnect
       })
 
       backend_obj.h2Pool.createPool()
@@ -439,6 +441,17 @@ Http2Proxy.prototype.mid = function () {
       }
 
       session_client = await hii.getSession()
+
+      if (session_client.deny) {
+        for (let i = 0; i < 50; i++) {
+          await c.ext.delay(5 + i)
+          session_client = await hii.getSession()
+          if (!session_client.deny) break
+        }
+
+        if (session_client.deny)
+          return c.status(429).send('服务繁忙，请稍后再试')
+      }
 
       await new Promise(async (rv, rj) => {
         let resolved = false
