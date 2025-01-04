@@ -91,7 +91,7 @@ if (euid > 0) {
 }
 
 if (euid > 0) {
-  let local_path = `${process.env.HOME}/.local/cdpc`;
+  let local_path = `${process.env.HOME}/.cdpc`;
 
   config_path = `${local_path}/config`;
   config_disabled_path = `${config_path}/disabled`;

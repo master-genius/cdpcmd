@@ -37,7 +37,7 @@ for (let name of namelist) {
                         ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
                         : process.env.HOME
 
-      let file = `${home_path}/.local/cdpc/config/disbaled/${nm[1]}`
+      let file = `${home_path}/.cdpc/config/disbaled/${nm[1]}`
       
       cmdlist.push({
         op: arg.command,

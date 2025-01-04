@@ -110,7 +110,7 @@ function parseAndOutInfo(appname) {
                     ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
                     : process.env.HOME
   
-    statefile = `${home_path}/.local/cdpc/watch/state/${nm[1]}`
+    statefile = `${home_path}/.cdpc/watch/state/${nm[1]}`
   }
 
   get_state(statefile, nm[1], nm[0])

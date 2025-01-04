@@ -31,7 +31,7 @@ if [ "$UID" -gt 0 ] ; then
         exit 1
     fi
 
-    CDPC_DIR="$HOME/.local/cdpc"
+    CDPC_DIR="$HOME/.cdpc"
     CDPC_WATCH="$CDPC_DIR/watch"
     CDPC_LOADINFO="$CDPC_DIR/cdpcd-load.log"
     CDPC_LOGDIR="$CDPC_DIR/logs"
@@ -369,7 +369,7 @@ case $1 in
                 UCDPCD_LOAD=''
                 for u in $UAULIST ; do
                     UHOMEDIR=`cat $CDPC_UAUTH/$u`
-                    UCDPCD_LOAD="$UHOMEDIR/.local/cdpc/cdpcd-load.log"
+                    UCDPCD_LOAD="$UHOMEDIR/.cdpc/cdpcd-load.log"
                     if [ -f "$UCDPCD_LOAD" ] ; then
                         node $CDPC_INS_DIR/outstatus.js $UCDPCD_LOAD $ARGS --user $u
                     fi

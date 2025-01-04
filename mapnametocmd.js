@@ -34,8 +34,8 @@ for (let name of namelist) {
                         ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
                         : process.env.HOME
 
-      //let app_file = `${home_path}/.local/cdpc/watch/${args.op}/${nm[1]}`
-      let cmdtext = `${home_path}/.local/cdpc/watch/${args.op}/${nm[1]}`
+      //let app_file = `${home_path}/.cdpc/watch/${args.op}/${nm[1]}`
+      let cmdtext = `${home_path}/.cdpc/watch/${args.op}/${nm[1]}`
       
       //let cmdtext = `node /usr/local/cdpc/noticeApp.js ${app_file}${euid === 0 ? ` && chown ${nm[0]} ${app_file}` : '' }`
       cmdlist.push(cmdtext)
