@@ -12,7 +12,9 @@ const npargv = require('npargv')
 
 let cgrouplist = [
   'cdpcd-user-auth-limit', 'cdpcd-85-limit', 'cdpcd-80-limit', 'cdcpd-70-limit', 'cdpcd-50-limit',
-  'cdpcd-25-limit'
+  'cdpcd-25-limit',
+  'cdpcd-mem-limit',
+  'cdpcd-cpu-limit'
 ]
 
 let arg = npargv({
@@ -24,7 +26,7 @@ let arg = npargv({
     name: 'cgroup',
     default: cgrouplist[0],
     callback: (d) => {
-      if (['85', '80', '70', '50', '25'].indexOf(d) >= 0) {
+      if (['85', '80', '70', '50', '25', 'mem', 'cpu'].indexOf(d) >= 0) {
         return `cdpcd-${d}-limit`
       }
 

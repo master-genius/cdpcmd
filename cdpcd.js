@@ -265,6 +265,19 @@ if (euid === 0) {
     memory: parseInt(totalmem * 0.85),
     pids: maxPids
   })
+
+  //为了限制内存占用爆满导致系统崩溃
+  cm.cgroup.create('cdpcd-mem-limit', {
+    cpu: [89000, 100000],
+    memory: parseInt(totalmem * 0.36),
+    pids: parseInt(maxPids * 0.36)
+  })
+
+  cm.cgroup.create('cdpcd-cpu-limit', {
+    cpu: [35000, 100000],
+    memory: parseInt(totalmem * 0.35),
+    pids: parseInt(maxPids * 0.35)
+  })
   
   cm.cgroup.create('cdpcd-85-limit', {
     cpu: [86500, 100000],
