@@ -261,28 +261,38 @@ if (euid === 0) {
   }
 
   cm.cgroup.create('cdpcd-user-auth-limit', {
-    cpu: [98500, 100000],
+    cpu: [98600, 100000],
     memory: parseInt(totalmem * 0.85),
     pids: maxPids
+  })
+  
+  //提高CPU占用，但是内存限制比较低
+  cm.cgroup.create('cdpcd-hclm-limit', {
+    cpu: [98500, 100000],
+    memory: parseInt(totalmem * 0.42),
+    pids: parseInt(maxPids * 0.42),
+    cpus: '%90'
   })
 
   //为了限制内存占用爆满导致系统崩溃
   cm.cgroup.create('cdpcd-mem-limit', {
     cpu: [89000, 100000],
     memory: parseInt(totalmem * 0.36),
-    pids: parseInt(maxPids * 0.36)
+    pids: parseInt(maxPids * 0.36),
+    cpus: '%80'
   })
 
   cm.cgroup.create('cdpcd-cpu-limit', {
     cpu: [35000, 100000],
     memory: parseInt(totalmem * 0.35),
-    pids: parseInt(maxPids * 0.35)
+    pids: parseInt(maxPids * 0.35),
+    cpus: '%35'
   })
   
   cm.cgroup.create('cdpcd-85-limit', {
     cpu: [86500, 100000],
-    memory: parseInt(totalmem * 0.75),
-    pids: parseInt(maxPids * 0.75)
+    memory: parseInt(totalmem * 0.72),
+    pids: parseInt(maxPids * 0.7)
   })
 
   cm.cgroup.create('cdpcd-80-limit', {
@@ -300,12 +310,14 @@ if (euid === 0) {
   cm.cgroup.create('cdpcd-50-limit', {
     cpu: [50000, 100000],
     memory: parseInt(totalmem * 0.4),
-    pids: parseInt(maxPids / 2)
+    pids: parseInt(maxPids / 2),
+    cpus: '%50+'
   })
   
   cm.cgroup.create('cdpcd-25-limit', {
     cpu: [25000, 100000],
     memory: parseInt(totalmem * 0.25),
+    cpus: '%25=',
     pids: 25
   })
 }
