@@ -78,6 +78,7 @@ function authUser(uname, cgroup) {
   let au = getuser(uname)
 
   if (!au || !au.home || au.home === '/') {
+    console.error(`${uname} not found`)
     return false
   }
   
