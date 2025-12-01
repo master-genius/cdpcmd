@@ -12,6 +12,8 @@ class Http2Pool {
 
     this.pool = new Map()
     
+    this.innerConnectDelay = 0
+    this.failedCount = 0
     this.reconnecting = false
     // 配置项
     this.maxStreamId = !isNaN(options.maxStreamId) && options.maxStreamId > 1
@@ -100,6 +102,12 @@ class Http2Pool {
               timeout_timer = null
             }
 
+            if (this.failedCount > 0) {
+              this.failedCount--
+            }
+
+            this.innerConnectDelay = 0
+
             sessionState.connected = true
             this.parent && !this.parent.alive && (this.parent.alive = true)
 
@@ -115,6 +123,14 @@ class Http2Pool {
             if (this.pool.size < 1) {
               this.parent && (this.parent.alive = false)
             }
+
+            this.failedCount++
+
+            if (this.failedCount < 10) {
+              this.innerConnectDelay = this.failedCount
+            } if (this.failedCount < 60000) {
+              this.innerConnectDelay = parseInt(this.failedCount / 10)
+            } else { this.innerConnectDelay = 6000 }
 
             !rejected && (rejected = true) && reject(err)
           })
@@ -170,13 +186,15 @@ class Http2Pool {
   delayConnect() {
     if (this.reconnecting) return false
 
-    if (this.reconnDelay) {
+    let delay_time = this.reconnDelay + this.innerConnectDelay
+
+    if (delay_time > 0) {
       if (!this.delayTimer) {
         this.reconnecting = true
         this.delayTimer = setTimeout(() => {
           this.delayTimer = null
           this.connect()
-        }, this.reconnDelay)
+        }, delay_time)
       }
     } else {
       this.reconnecting = true

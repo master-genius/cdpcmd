@@ -1,6 +1,6 @@
 'use strict'
 
-function fmtMessage(msg, withEnd = true) {
+function fmtMessage(msg, withEnd=true) {
   let text = ''
 
   if (Array.isArray(msg)) {
@@ -12,7 +12,7 @@ function fmtMessage(msg, withEnd = true) {
     }
     if (textarr.length === 0) return ''
 
-    return textarr.join('\r\n') + '\n\n'
+    return textarr.join('\n\n') + '\n\n'
   }
 
   if (msg === null || msg === undefined || msg === '') {
@@ -99,7 +99,7 @@ class SSE {
         case 'timeout':
         case 'retry':
           if (typeof options[k] === 'number' && options[k] >= 0) {
-            this[k] =  options[k]
+            this[k] = options[k]
           }
           break
 
@@ -266,9 +266,9 @@ class SSE {
       //用于统计是否超时断开并发送retry
       ctx.box.sseCount = 0
       if (!ctx.sendmsg || typeof ctx.sendmsg !== 'function') {
-        ctx.sendmsg = (msg, callback = undefined) => {
+        ctx.sendmsg = (msg, cb=undefined) => {
           let emsg = fmtMessage(msg)
-          if (emsg) return ctx.reply.write(emsg, callback)
+          if (emsg) return ctx.reply.write(emsg, cb)
         }
       }
 
