@@ -1,14 +1,17 @@
 'use strict'
 
-const goh = require('./gohttp.js')
-const h2c = require('./hiio.js')
-const http2proxy = require('./http2proxy.js')
+const GoHttp = require('./gohttp.js')
+const GoHttp2 = require('./gohttp2.js')
+
+let http2Connect = (url, options) => {
+  return new GoHttp2(url, options)
+}
 
 module.exports = {
-  HttpClient: goh,
-  HttpClientII: h2c,
-  http2proxy,
-  HttpIIProxy: http2proxy,
-  httpcli : new goh(),
-  http2cli : new h2c(),
+  GoHttp, GoHttp2,
+  hcli: new GoHttp(),
+  http2Connect,
+  h2cli: {
+    connect: http2Connect
+  }
 }
