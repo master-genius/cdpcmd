@@ -56,6 +56,10 @@ let loadfile = process.argv[2]
 try {
   fs.accessSync(loadfile)
 } catch (err) {
+  // loadfile 不存在表示该用户下没有运行中的 cdpcd 服务，静默退出
+  if (err.code === 'ENOENT') {
+    process.exit(0)
+  }
   console.error(err)
   process.exit(1)
 }
@@ -125,18 +129,21 @@ function matchAppName(name, applist, user='') {
   for (let a of applist) {
     let ind = a.indexOf(':')
     if (ind > 0) {
-      if (user && a.indexOf(user) !== 0) {
+      // a 格式为 "user:appname"，先校验 user 前缀
+      if (user && a.substring(0, ind) !== user) {
         continue
       }
 
-      if (name.indexOf(a.substring(ind+1)) >= 0) {
+      // 精确匹配 app 名（修复：原 indexOf 子串匹配会误伤同名前缀的应用）
+      if (name === a.substring(ind + 1)) {
         return true
-      } else {
-        continue
       }
+
+      continue
     }
 
-    if (name.indexOf(a) >= 0) return true
+    // 精确匹配 app 名
+    if (name === a) return true
   }
 
   return false
@@ -249,8 +256,8 @@ async function getLoadData(loadfile, loop=10) {
 
       return await getLoadData(loadfile, loop-1)
     }
-    console.error(err.message)
-    process.exit(1)
+    // 重试耗尽：文件被并发删除或损坏，静默退出而非崩溃
+    process.exit(0)
   }
 }
 

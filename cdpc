@@ -362,7 +362,9 @@ case $1 in
         ;;
 
     status)
-        node $CDPC_INS_DIR/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
+        if [ -f "$CDPC_LOADINFO" ] ; then
+            node $CDPC_INS_DIR/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
+        fi
         if [ "$UID" -eq 0 ] ; then
             if [ -d "$CDPC_UAUTH" ] ; then
                 UAULIST=`ls $CDPC_UAUTH`
