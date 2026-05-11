@@ -17,11 +17,7 @@ let cgrouplist = [
   'cdpcd-cpu-limit'
 ]
 
-let arg = npargv({
-  '@command': [
-    'show', 'add', 'remove'
-  ],
-
+let arg = npargv({ 
   '--cgroup': {
     name: 'cgroup',
     default: cgrouplist[0],
@@ -33,6 +29,10 @@ let arg = npargv({
       return cgrouplist.indexOf(d) >= 0 ? d : cgrouplist[1]
     }
   }
+}, {
+  commands: [
+    'show', 'add', 'remove'
+  ]
 })
 
 let args = arg.args

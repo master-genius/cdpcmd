@@ -8,8 +8,8 @@ let UAUTH_DIR = '/usr/local/cdpc/uauth'
 
 let euid = process.geteuid()
 
-let arg = npargv({
-  '@command': [
+let arg = npargv({}, {
+  commands: [
     'disable', 'enable'
   ]
 })
