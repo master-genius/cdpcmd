@@ -12,8 +12,8 @@ let parseName = require('./parseNameApp.js')
 
 const npargv = require('npargv')
 
-let arg = npargv({
-  '@command': [
+let arg = npargv({},{
+  commands: [
     'start', 'stop', 'restart', 'pause', 'resume', 'remove', 'disable', 'enable'
   ],
 })
