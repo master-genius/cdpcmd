@@ -66,8 +66,6 @@ let logfile = `${__dirname}/logs/cdpcd.log`;
 let pidfile = __dirname + '/logs/cdpcd-pid';
 let logdir = __dirname + '/logs';
 
-let preg = /node.*\/usr\/local\/cdpc\/cdpcd\.js/i;
-
 let euid = process.geteuid();
 
 let {idtable, nametable} = getUserTable()
@@ -104,8 +102,6 @@ if (euid > 0) {
 
   pidfile = `${local_path}/cdpcd-pid`;
 
-  preg = new RegExp(`node.*\/usr\/local\/cdpc\/cdpcd\.js.*--uid.*${euid}`);
-
   try_mkdir(local_path)
   try_mkdir(config_path)
   try_mkdir(config_disabled_path)
@@ -114,48 +110,56 @@ if (euid > 0) {
   process.chdir(local_path)
 }
 
-try {
-  let cur_pid = fs.readFileSync(pidfile, {encoding: 'utf8'});
-  cur_pid = parseInt(cur_pid);
+/**
+ * cgroup 子树初始化：
+ * 从 /proc/self/cgroup 推导 cdpcd 自身所在的 cgroup 路径，
+ * 把自身挪入叶子组 cdpcd-main（cgroup v2 "no internal processes" 规则），
+ * 返回该路径作为 cgroupBaseDir 传给 CDPC，使 limit 组建在 cdpcd.service 子树下，
+ * 不再逃逸到 cgroup 根。失败时回退 undefined（cgroup.js 回退到 /sys/fs/cgroup）。
+ */
+function initCgroupBaseDir() {
+  if (euid !== 0) return undefined
 
-  let pid = process.pid;
-  if (cur_pid !== pid) {
+  try {
+    let line = fs.readFileSync('/proc/self/cgroup', {encoding: 'utf8'}).trim()
+    // cgroup v2 格式：0::/system.slice/cdpcd.service
+    let cgroupPath = line.split(':').pop()
+    if (!cgroupPath || cgroupPath === '/') return undefined
+
+    let selfCgroupDir = '/sys/fs/cgroup' + cgroupPath
+
+    // 确认目录存在
+    fs.accessSync(selfCgroupDir)
+
+    // cgroup v2 "no internal processes"：有子组的 cgroup 不能直接放进程。
+    // 先创建叶子目录，再把 cdpcd 自身挪进去，清空父 cgroup.procs，
+    // 这样后续 cgroup.create() 写入 subtree_control 才不会 EBUSY。
+    let leafDir = selfCgroupDir + '/cdpcd-main'
     try {
-      fs.accessSync(`/proc/${cur_pid}`);
-      let data = fs.readFileSync(`/proc/${cur_pid}/cmdline`, {encoding: 'utf8'});
-
-      if ( preg.test(data) ) {
-          if (euid === 0) {
-              // root cdpcd 只能有一个实例
-              console.error('服务已经运行。');
-              process.exit(1);
-          } else {
-              /**
-               * [包B] 用户级 cdpcd 检测到上一个实例仍在运行。
-               * 典型场景：root cdpcd 重启后，旧的用户 cdpcd 因处于独立 cgroup
-               * 逃过 systemd 清理、被 PID 1 收养而残留，与当前新实例争夺
-               * 同一个 $HOME/.cdpc 的管理权（"服务管理冲突"）。
-               * 当前实例由新的 root cdpcd 正常拉起，是合法管理者，
-               * 因此终止旧的孤儿实例，由本实例接管。
-               */
-              try {
-                process.kill(cur_pid, 'SIGKILL');
-                console.error(`已终止遗留的用户 cdpcd 实例 (PID:${cur_pid})，由当前实例接管。`);
-              } catch (killErr) {
-                // 旧实例可能刚好已退出，忽略
-              }
-          }
-      }
-
+      fs.mkdirSync(leafDir)
     } catch (err) {
-      //console.error(err);
+      // 目录已存在则忽略
+      if (err.code !== 'EEXIST') throw err
     }
-  }
 
-} catch (err) {
-  console.error(err);
-  fs.writeFileSync('./logs/cdpcd-init-error.log', `${err.message}\n${err.stack}\n`)
+    try {
+      fs.writeFileSync(leafDir + '/cgroup.procs', `${process.pid}`, {encoding: 'utf8'})
+    } catch (err) {
+      // 挪移失败（如 Delegate=yes 未设、权限不足）：回退到 cgroup 根，
+      // 行为等同现状——limit 组建在 /sys/fs/cgroup 下。
+      args.debug && console.error(`[cgroup] 自身挪入叶子组失败，回退到 cgroup 根: ${err.message}`)
+      return undefined
+    }
+
+    return selfCgroupDir
+  } catch (err) {
+    // 非 systemd 环境 或 /proc/self/cgroup 不存在：回退
+    args.debug && console.error(`[cgroup] 推导 cgroup 路径失败: ${err.message}`)
+    return undefined
+  }
 }
+
+let cgroupBaseDir = initCgroupBaseDir()
 
 try {
   fs.writeFileSync(pidfile, `${process.pid}`, {encoding: 'utf8'});
@@ -347,6 +351,7 @@ const cm = new cdpc({
   debug: args.debug,
   errorHandle: clog.errorLog.bind(clog),
   onLoadConfig: writeConfigErrors,
+  cgroupBaseDir: cgroupBaseDir,
   beforeStartCallback: (chk) => {
     let real_list = getDisabledApp()
     if (real_list.includes(chk.name)) {

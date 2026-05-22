@@ -129,18 +129,11 @@ cdpcd 重启后，上次以 detached 方式启动的子进程会被 PID 1 收养
 - 监控三函数（`_getOneProcInfo`/`_saveMonitorLast`/`_cacltChildsLoad`）支持 `adoptedPid`，被接管进程照常采集 cpu/mem/net。
 - `stop` / `remove` / `_cleanupOldByName` 均正确终止 `adoptedPid` 并清理轮询定时器。
 
-### 3.6 每应用输出采集（`cfg.logFile`）
-
-- 新增 `cfg.logFile` 配置项：spawn 前把 `stdio[1]/[2]` 改为 pipe，spawn 后采集 stdout/stderr。
-- 新增 `_attachLogFile`：把子进程输出落到日志文件，写入会话头 `===== [时间] name pid=N 启动 =====`。
-- 新增 `_rotateLogFile`：超 5MB 单备份轮转（`.1`）。
-- exit 时延迟 200ms 关闭写入流（让管道残留数据落盘）。
-- `chk` 新增 `logFile`、`_logStream` 字段。
 
 ### 3.7 loadinfo dump 扩展
 
 `fmtLoadInfo` 的 `childs[]` 每项新增字段，供 `cdpc inspect` 展示真实运行时配置：
-`configPath`、`cgroup`、`after`、`autoRemove`、`monitor`、`monitorNetData`、`logFile`。
+`configPath`、`cgroup`、`after`、`autoRemove`、`monitor`、`monitorNetData`。
 
 ---
 
@@ -149,7 +142,6 @@ cdpcd 重启后，上次以 detached 方式启动的子进程会被 PID 1 收养
 ### 4.1 `cdpcd.js`（守护进程主入口）
 
 - 新增 `writeConfigErrors`，接到 cdpc 的 `onLoadConfig` 回调，把每次加载结果写成快照到 `logs/config-errors.log`。
-- `beforeStartCallback`：为每个服务自动注入 `logFile = logs/apps/<name>.log`。
 - 新增 `apps` 日志目录创建。
 - 用户级 cdpcd 启动自检：检测到上一个用户 cdpcd 实例（root cdpcd 重启后残留的孤儿）→ `SIGKILL` 旧实例，由新实例接管，消除"服务管理冲突"。
 - 修复 `set_disabled_state` 引用未定义 `msg.name` 的 ReferenceError。
@@ -224,6 +216,5 @@ systemd `ExecStop` 钩子。用户级 cdpcd 运行在独立 cgroup（`cdpcd-user
 - name 自动推断与编号、长度上限、ck 冲突、force 兄弟保护
 - detached 进程接管：状态正确、轮询感知退出、重启、stop 终止被接管进程
 - `onLoadConfig` 回调、config-errors、`inspect`
-- `cfg.logFile` 输出采集、会话头、轮转
 
 > 注意：单元验证未覆盖真机环境下的 cgroup 逃逸/接管行为。建议在 root + 授权用户的真实环境做一次端到端 install + `systemctl restart` 实测。
