@@ -53,7 +53,6 @@ line('command', ch.command)
 line('args', Array.isArray(ch.args) ? ch.args.join(' ') : '-')
 line('configPath', ch.configPath)
 line('cgroup', ch.cgroup)
-line('logFile', ch.logFile)
 
 section('重启策略')
 line('restart', ch.restart)

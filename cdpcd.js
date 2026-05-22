@@ -241,6 +241,66 @@ let config_errors_file = `${logdir}/config-errors.log`
 let apps_logdir = `${logdir}/apps`
 try_mkdir(apps_logdir)
 
+/**
+ * [包C] 应用日志：把子进程 stdout/stderr 采集到 logs/apps/<name>.log。
+ *
+ * 子进程一律非 detached（与 cdpcd 同生死），所以 cdpcd 始终在写入路径上：
+ * 由 cdpcd 持有写入流，按累计字节数轮转（rename→reopen，单备份 .1）。
+ * cdpc 不参与日志，capture 全在此处，通过 cdpc 现成的 callback 钩子挂载。
+ */
+const DEFAULT_MAX_LOG_BYTES = 5 * 1024 * 1024
+
+function attachAppLog(ch, name, maxBytes) {
+  if (!ch || !ch.stdout || !ch.stderr) return
+
+  let file = `${apps_logdir}/${name}.log`
+  let max = (typeof maxBytes === 'number' && maxBytes > 0) ? maxBytes : DEFAULT_MAX_LOG_BYTES
+
+  let stream = fs.createWriteStream(file, {flags: 'a', mode: 0o644})
+  stream.on('error', err => clog.errorLog(err, '--ERR-APPLOG--'))
+  stream.write(`\n===== [${(new Date()).toLocaleString()}] ${name} pid=${ch.pid} 启动 =====\n`)
+
+  let written = 0
+
+  // 轮转：当前文件改名为 .1（覆盖旧备份），原写入流的残留缓冲随 inode 落到 .1，
+  // 新建写入流接管 logs/apps/<name>.log。cdpcd 独占该文件 fd，rename 安全无竞态。
+  function rotate() {
+    let old = stream
+    try {
+      fs.renameSync(file, file + '.1')
+    } catch (err) {}
+    stream = fs.createWriteStream(file, {flags: 'a', mode: 0o644})
+    stream.on('error', err => clog.errorLog(err, '--ERR-APPLOG--'))
+    written = 0
+    try { old.end() } catch (err) {}
+  }
+
+  // 写入前判断轮转：保证当前 logs/apps/<name>.log 始终留有最新输出，
+  // 不会出现"刚轮转完当前文件为空、applog 看不到东西"。
+  function onData(chunk) {
+    if (!stream) return
+    if (written >= max) rotate()
+    stream.write(chunk)
+    written += chunk.length
+  }
+
+  ch.stdout.on('data', onData)
+  ch.stderr.on('data', onData)
+
+  let closed = false
+  function closeStream() {
+    if (closed) return
+    closed = true
+    let s = stream
+    stream = null
+    // 延迟一点，让管道里残留数据落盘后再关闭
+    s && setTimeout(() => { try { s.end() } catch (err) {} }, 200)
+  }
+
+  ch.on('exit', closeStream)
+  ch.on('error', closeStream)
+}
+
 function writeConfigErrors(result) {
   let lines = []
   let ts = (new Date()).toLocaleString()
@@ -285,7 +345,6 @@ const cm = new cdpc({
   config: config_path,
   eventDir: event_dir,
   debug: args.debug,
-  childDetached: euid === 0 ? false : true,
   errorHandle: clog.errorLog.bind(clog),
   onLoadConfig: writeConfigErrors,
   beforeStartCallback: (chk) => {
@@ -294,9 +353,24 @@ const cm = new cdpc({
       chk.disabled = true
     }
 
-    // [包C] 为每个服务指定 stdout/stderr 采集文件（用户未显式指定时）
-    if (!chk.logFile && chk.name) {
-      chk.logFile = `${apps_logdir}/${chk.name}.log`
+    // [包C] 应用日志：stdout/stderr 改 pipe，并把采集挂到 cdpc 的 callback 钩子上。
+    //   stdio 是常量配置，设一次即可；callback 每次 spawn 都会被调用（含重启）。
+    if (chk.name) {
+      chk.options = chk.options || {}
+      let stdio = Array.isArray(chk.options.stdio)
+        ? chk.options.stdio.slice()
+        : ['ignore', 'ignore', 'ignore']
+      stdio[1] = 'pipe'
+      stdio[2] = 'pipe'
+      chk.options.stdio = stdio
+
+      let logName = chk.name
+      let logMax = chk.maxLogBytes
+      let prevCb = chk.callback
+      chk.callback = (ch, cm, c) => {
+        attachAppLog(ch, logName, logMax)
+        typeof prevCb === 'function' && prevCb(ch, cm, c)
+      }
     }
 
     //检测并设定相关limit
