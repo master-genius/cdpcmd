@@ -64,10 +64,61 @@ cdpc [控制选项] [应用名称]
 
 .B config 管理配置
 
-config支持子命令show、add、remove用于管理配置文件。
+config支持子命令：
+
+.sp
+config add FILE 添加配置文件。配置文件名（去掉扩展名后）即服务名，
+必须以字母数字下划线开头、仅含字母数字下划线减号、长度不超过50，否则会被拒绝。
+
+.sp
+config remove NAME 移除配置文件。
+
+.sp
+config show 显示所有配置文件内容。
+
+.sp
+config list 列出配置文件名。
+
+.sp
+config errors 显示最近一次配置加载报告（哪些加载成功、哪些被跳过及原因）。
 
 .B status 显示应用状态
 
 每个用户都仅仅能看到自己当前管理的应用。
+
+.B inspect 查看服务的完整运行时配置
+
+cdpc inspect [用户:]应用名称。展示该服务真实生效的运行时配置
+（命令、参数、重启策略、cgroup、资源限制等），比 config show 的磁盘原始文件更可信。
+
+.B applog 查看应用输出日志
+
+cdpc applog [用户:]应用名称 [-f]。查看服务进程的 stdout/stderr 采集日志，
+-f 表示持续跟踪。
+
+.B audit 查看命令审计日志
+
+记录所有变更类命令（start/stop/restart/config/auth 等）的执行历史。
+
+.B reload 与 load 的区别
+
+.sp
+load 把配置目录加载进来，新增的服务会被启动。
+
+.sp
+reload 重新加载配置，是纯粹的配置同步操作：
+
+.sp
+· 已存在且未变更的服务保持原样，不会被重启。
+
+.sp
+· 配置中已删除（或改名）的服务会被停止移除。
+
+.sp
+· 改了 command/args 的服务会重启以应用新命令。
+
+.sp
+注意：仅修改 restart、limit、env 等字段后 reload 不会重启服务，
+需要显式 cdpc restart 应用名称 才能让这些改动生效。
 
 

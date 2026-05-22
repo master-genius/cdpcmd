@@ -91,6 +91,27 @@ check_args2_exit () {
     fi
 }
 
+# 校验配置文件名：去扩展名后必须符合 cdpc 的 name 规则
+# （字母/数字/下划线开头，仅含字母数字下划线减号，长度不超过 50）。
+# cdpc 用配置文件名作为服务名，所以文件名必须合法。
+check_config_filename() {
+    local fname base
+    fname=$(basename "$1")
+    base="$fname"
+    case "$base" in
+        *.js)   base="${base%.js}" ;;
+        *.cjs)  base="${base%.cjs}" ;;
+        *.mjs)  base="${base%.mjs}" ;;
+        *.json) base="${base%.json}" ;;
+    esac
+
+    if [[ "$base" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,49}$ ]] ; then
+        return 0
+    fi
+
+    return 1
+}
+
 handle_config () {
     case $1 in
         add)
@@ -99,8 +120,18 @@ handle_config () {
                 exit 1
             fi
 
+            if ! check_config_filename "$2" ; then
+                echo "配置文件名不合法：$(basename "$2")"
+                echo "cdpc 用配置文件名作为服务名，文件名（去扩展名后）必须："
+                echo "  · 以字母、数字或下划线开头"
+                echo "  · 仅包含字母、数字、下划线、减号"
+                echo "  · 长度不超过 50"
+                exit 1
+            fi
+
+            CFG_BASENAME=$(basename "$2")
             cp "$2" "$CDPC_CONFIG/"
-            echo "$CDPC_CONFIG/$2" > "$CDPC_WATCH/load"
+            echo "$CDPC_CONFIG/$CFG_BASENAME" > "$CDPC_WATCH/load"
             ;;
 
         remove)
@@ -123,6 +154,14 @@ handle_config () {
                 cat -n "$CDPC_CONFIG/$c"
                 echo "    "
             done
+            ;;
+        errors)
+            CFG_ERR_FILE="$CDPC_LOGDIR/config-errors.log"
+            if [ -f "$CFG_ERR_FILE" ] ; then
+                cat "$CFG_ERR_FILE"
+            else
+                echo "暂无配置加载报告（服务尚未加载过配置，或没有 config-errors.log）。"
+            fi
             ;;
     esac
 }
@@ -266,6 +305,19 @@ handle_log() {
 
 parse_args $@
 
+# 命令审计：变更类操作追加一行到 audit.log
+write_audit() {
+    AUDIT_FILE="$CDPC_LOGDIR/audit.log"
+    AUDIT_TS=`date '+%Y-%m-%d %H:%M:%S'`
+    echo "$AUDIT_TS | $ME | $@" >> "$AUDIT_FILE" 2>/dev/null
+}
+
+case $1 in
+    start|stop|restart|pause|resume|remove|safe-remove|disable|enable|reload|load|config|auth|webserver|service-start|service-stop|service-restart)
+        write_audit "$@"
+        ;;
+esac
+
 case $1 in
     start)
         check_args2_exit $# 2
@@ -387,6 +439,98 @@ case $1 in
             fi
         done
         ;;
+
+    #查看某个服务的完整运行时配置
+    inspect)
+        check_args2_exit $# 2
+        INSPECT_NAME="$2"
+        case "$INSPECT_NAME" in
+            *:*)
+                INSPECT_USER="${INSPECT_NAME%%:*}"
+                INSPECT_APP="${INSPECT_NAME#*:}"
+                ;;
+            *)
+                INSPECT_USER=""
+                INSPECT_APP="$INSPECT_NAME"
+                ;;
+        esac
+
+        if [ -z "$INSPECT_USER" ] || [ "$INSPECT_USER" = "root" ] ; then
+            if [ -f "$CDPC_LOADINFO" ] ; then
+                node $CDPC_INS_DIR/inspect.js "$CDPC_LOADINFO" "$INSPECT_APP"
+            else
+                echo "未找到负载信息文件，服务可能未运行。"
+            fi
+        else
+            if [ "$UID" -ne 0 ] ; then
+                echo "deny!! 普通用户只能查看自己的服务。"
+                exit 1
+            fi
+            UHOME=`cat "$CDPC_UAUTH/$INSPECT_USER" 2>/dev/null`
+            if [ -z "$UHOME" ] ; then
+                echo "$INSPECT_USER : 未授权用户"
+                exit 1
+            fi
+            ULOAD="$UHOME/.cdpc/cdpcd-load.log"
+            if [ -f "$ULOAD" ] ; then
+                node $CDPC_INS_DIR/inspect.js "$ULOAD" "$INSPECT_APP"
+            else
+                echo "未找到 $INSPECT_USER 的负载信息文件。"
+            fi
+        fi
+        ;;
+
+    #查看某个服务的 stdout/stderr 输出日志
+    applog)
+        check_args2_exit $# 2
+        APPLOG_NAME="$2"
+        case "$APPLOG_NAME" in
+            *:*)
+                APPLOG_USER="${APPLOG_NAME%%:*}"
+                APPLOG_APP="${APPLOG_NAME#*:}"
+                ;;
+            *)
+                APPLOG_USER=""
+                APPLOG_APP="$APPLOG_NAME"
+                ;;
+        esac
+
+        if [ -z "$APPLOG_USER" ] || [ "$APPLOG_USER" = "root" ] ; then
+            APPLOG_FILE="$CDPC_LOGDIR/apps/$APPLOG_APP.log"
+        else
+            if [ "$UID" -ne 0 ] ; then
+                echo "deny!! 普通用户只能查看自己的服务。"
+                exit 1
+            fi
+            UHOME=`cat "$CDPC_UAUTH/$APPLOG_USER" 2>/dev/null`
+            if [ -z "$UHOME" ] ; then
+                echo "$APPLOG_USER : 未授权用户"
+                exit 1
+            fi
+            APPLOG_FILE="$UHOME/.cdpc/logs/apps/$APPLOG_APP.log"
+        fi
+
+        if [ ! -f "$APPLOG_FILE" ] ; then
+            echo "未找到应用日志：$APPLOG_FILE"
+            exit 1
+        fi
+
+        if [ "$3" = "-f" ] ; then
+            tail -f "$APPLOG_FILE"
+        else
+            tail -n 200 "$APPLOG_FILE"
+        fi
+        ;;
+
+    #查看命令审计日志
+    audit)
+        AUDIT_VIEW_FILE="$CDPC_LOGDIR/audit.log"
+        if [ -f "$AUDIT_VIEW_FILE" ] ; then
+            tail -n 100 "$AUDIT_VIEW_FILE"
+        else
+            echo "暂无审计日志。"
+        fi
+        ;;
     
     #start stop restart
     webserver)
@@ -400,9 +544,14 @@ case $1 in
         ;;
 
     config)
-        if [[ $# -gt 1 ]] && [[ "$2" = "show" ]] ; then
-            handle_config show
-            exit 0
+        # 无参子命令：show / errors / list
+        if [[ $# -gt 1 ]] ; then
+            case $2 in
+                show|errors|list)
+                    handle_config $2
+                    exit 0
+                    ;;
+            esac
         fi
 
         check_args2_exit $# 3
@@ -476,8 +625,10 @@ case $1 in
         printf "\x1b[2;36m使用cdpc help查看帮助文档\n\x1b[0m"
         echo "快速使用提示："
         echo "  cdpc status 查看应用状态"
+        echo "  cdpc inspect [应用名称] 查看服务完整运行时配置"
         echo "  cdpc config add [文件路径] 添加配置文件"
         echo "  cdpc config show 显示配置文件详情"
+        echo "  cdpc config errors 查看最近一次配置加载报告"
         echo "  cdpc config remove [配置文件名称] 移除配置文件"
         echo "  cdpc start  [应用名称] 启动应用"
         echo "  cdpc stop   [应用名称] 停止应用"

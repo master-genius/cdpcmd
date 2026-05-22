@@ -87,17 +87,20 @@ app1      RUNNING     1234    12%  12M
 : NET [receive: 123, transmit: 456]
 */
 
+// [N3] name 列宽自适应：默认 23，按实际最长 name 动态调整（上限 52）
+let nameColWidth = 23
+
 function fmtLine(ld) {
   let textobj = {}
   for (let k in ld) {
     switch (k) {
       case 'name':
         let dname = ld[k]
-        if (ld[k].length > 22) {
-          dname = ld[k].substring(0, 19) + '...'
+        if (dname.length > nameColWidth - 1) {
+          dname = dname.substring(0, nameColWidth - 4) + '...'
         }
 
-        textobj.name = dname.padEnd(23, ' ')
+        textobj.name = dname.padEnd(nameColWidth, ' ')
         break
 
       case 'state':
@@ -162,6 +165,14 @@ function fmtLimit(val, key) {
 }
 
 function fmtLoadTable(ld) {
+  // [N3] 计算实际最长 name，自适应列宽（短名维持 23，长名最多 52）
+  let maxName = 4 // 'Name' 表头长度
+  for (let ch of ld.childs) {
+    if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) continue
+    if (ch.name && ch.name.length > maxName) maxName = ch.name.length
+  }
+  nameColWidth = Math.min(Math.max(maxName + 2, 23), 52)
+
   let tableHead = {
     //最长28个字符
     name: 'Name',

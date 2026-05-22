@@ -126,8 +126,24 @@ try {
 
       if ( preg.test(data) ) {
           if (euid === 0) {
+              // root cdpcd 只能有一个实例
               console.error('服务已经运行。');
               process.exit(1);
+          } else {
+              /**
+               * [包B] 用户级 cdpcd 检测到上一个实例仍在运行。
+               * 典型场景：root cdpcd 重启后，旧的用户 cdpcd 因处于独立 cgroup
+               * 逃过 systemd 清理、被 PID 1 收养而残留，与当前新实例争夺
+               * 同一个 $HOME/.cdpc 的管理权（"服务管理冲突"）。
+               * 当前实例由新的 root cdpcd 正常拉起，是合法管理者，
+               * 因此终止旧的孤儿实例，由本实例接管。
+               */
+              try {
+                process.kill(cur_pid, 'SIGKILL');
+                console.error(`已终止遗留的用户 cdpcd 实例 (PID:${cur_pid})，由当前实例接管。`);
+              } catch (killErr) {
+                // 旧实例可能刚好已退出，忽略
+              }
           }
       }
 
@@ -216,6 +232,48 @@ function checkAndSetLimit(chk, limitobj) {
 }
 
 /**
+ * [包A] 把 loadConfig 的结构化结果写成快照到 config-errors.log。
+ * 覆盖式：每次加载反映当前配置目录的真实状态，便于 `cdpc config errors` 查看。
+ */
+let config_errors_file = `${logdir}/config-errors.log`
+
+// [包C] 每应用 stdout/stderr 日志目录
+let apps_logdir = `${logdir}/apps`
+try_mkdir(apps_logdir)
+
+function writeConfigErrors(result) {
+  let lines = []
+  let ts = (new Date()).toLocaleString()
+
+  lines.push(`# 配置加载报告 ${ts}`)
+  lines.push(`# loaded: ${result.loaded.length}  skipped: ${result.skipped.length}  removed: ${result.removed.length}`)
+
+  if (result.loaded.length > 0) {
+    lines.push(`# 已加载: ${result.loaded.join(', ')}`)
+  }
+  if (result.removed.length > 0) {
+    lines.push(`# 已移除: ${result.removed.join(', ')}`)
+  }
+
+  lines.push('')
+
+  if (result.skipped.length === 0) {
+    lines.push('（无配置错误）')
+  } else {
+    for (let s of result.skipped) {
+      let loc = s.file || s.name || '-'
+      if (s.index !== undefined) loc += ` [数组第 ${s.index} 项]`
+      lines.push(`! [${s.code}] ${loc}`)
+      lines.push(`    ${s.message}`)
+    }
+  }
+
+  fs.writeFile(config_errors_file, lines.join('\n') + '\n', err => {
+    err && clog.errorLog(err, '--ERR-WRITE-CONFIG-ERRORS--')
+  })
+}
+
+/**
  * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。
  * notExitButSpread设置为true，可以在不退出的情况下扩散信号。
  */
@@ -229,10 +287,16 @@ const cm = new cdpc({
   debug: args.debug,
   childDetached: euid === 0 ? false : true,
   errorHandle: clog.errorLog.bind(clog),
+  onLoadConfig: writeConfigErrors,
   beforeStartCallback: (chk) => {
     let real_list = getDisabledApp()
     if (real_list.includes(chk.name)) {
       chk.disabled = true
+    }
+
+    // [包C] 为每个服务指定 stdout/stderr 采集文件（用户未显式指定时）
+    if (!chk.logFile && chk.name) {
+      chk.logFile = `${apps_logdir}/${chk.name}.log`
     }
 
     //检测并设定相关limit
@@ -347,7 +411,7 @@ function postLog(msg, cm) {
 }
 
 async function set_disabled_state(op, name) {
-  let dfile = config_disabled_path + '/' + msg.name
+  let dfile = config_disabled_path + '/' + name
 
   if (op === 'disable' || op === 'disabled') {
     await fsp.access(dfile)

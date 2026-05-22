@@ -57,7 +57,7 @@ for (let c of cmdlist) {
       try {
         fs.writeFileSync(c.file, c.text||'', {
           encoding: 'utf8',
-          flag: 'a',
+          flag: 'w',
           mode: c.mode
         })
       } catch (err) {
