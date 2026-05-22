@@ -583,7 +583,10 @@ process.on('exit', code => {
 })
 
 /**
- * 避免同身份用户的子进程发送信号导致主服务进程退出
+ * 信号处理：
+ * - root cdpcd 由 systemd 托管，响应 SIGTERM 优雅退出（配合 unit 的 KillMode=mixed）。
+ * - 用户级 cdpcd 不是 systemd 服务，忽略 SIGTERM，避免同身份子进程用信号杀死它，
+ *   停机时由 systemd 对 cgroup 子树的 SIGKILL 收尾。
  */
 if (args.debug) {
   process.on('SIGTERM', sig => {
@@ -596,8 +599,14 @@ if (args.debug) {
     process.exit(0)
   })
 } else {
-  process.on('SIGTERM', sig => {})
-  euid === 0 && process.on('SIGINT', sig => {})
+  if (euid === 0) {
+    // 响应 systemctl stop 的 SIGTERM；process.exit 会触发 process.on('exit')
+    // 清理与 cdpc 的 killChilds。
+    process.on('SIGTERM', () => process.exit(0))
+    process.on('SIGINT', sig => {})
+  } else {
+    process.on('SIGTERM', sig => {})
+  }
 }
 
 if (euid === 0) {

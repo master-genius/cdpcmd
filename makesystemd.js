@@ -43,6 +43,13 @@ function fmtSystemd (options) {
   // 所有进程留在 cdpcd.service 子树内，systemctl stop/restart 时一把全杀，无逃逸。
   text += `Delegate=yes\n`
 
+  // KillMode=mixed：停机时 SIGTERM 只发给主进程（root cdpcd，它响应后优雅退出），
+  // cgroup 子树其余成员（用户 cdpcd、业务进程）由 systemd 直接 SIGKILL 收尾。
+  // 用户 cdpcd 刻意忽略 SIGTERM，故不能用默认 control-group（会朝整树发 SIGTERM、
+  // 用户 cdpcd 不理而干等超时）。TimeoutStopSec 兜底，防主进程卡住时无限等待。
+  text += `KillMode=mixed\n`
+  text += `TimeoutStopSec=20\n`
+
   if (!options.restart) options.restart = 'always'
 
   text += `Restart=${options.restart}\n`

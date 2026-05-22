@@ -92,7 +92,7 @@ check_args2_exit () {
 }
 
 # 校验配置文件名：去扩展名后必须符合 cdpc 的 name 规则
-# （字母/数字/下划线开头，仅含字母数字下划线减号，长度不超过 50）。
+# （字母/数字/下划线开头，仅含字母数字下划线减号及 @，长度不超过 50）。
 # cdpc 用配置文件名作为服务名，所以文件名必须合法。
 check_config_filename() {
     local fname base
@@ -105,7 +105,7 @@ check_config_filename() {
         *.json) base="${base%.json}" ;;
     esac
 
-    if [[ "$base" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,49}$ ]] ; then
+    if [[ "$base" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_@-]{0,49}$ ]] ; then
         return 0
     fi
 
@@ -124,7 +124,7 @@ handle_config () {
                 echo "配置文件名不合法：$(basename "$2")"
                 echo "cdpc 用配置文件名作为服务名，文件名（去扩展名后）必须："
                 echo "  · 以字母、数字或下划线开头"
-                echo "  · 仅包含字母、数字、下划线、减号"
+                echo "  · 仅包含字母、数字、下划线、减号、@"
                 echo "  · 长度不超过 50"
                 exit 1
             fi
@@ -285,10 +285,20 @@ load_config() {
 clear_logs() {
     LOGFILES=`ls $CDPC_LOGDIR`
     for f in $LOGFILES ; do
-        if [ ! "$f" = "cdpcd.log" ] ; then
+        if [ "$f" = "cdpcd.log" ] ; then
+            continue
+        fi
+        if [ -f "$CDPC_LOGDIR/$f" ] ; then
             rm "$CDPC_LOGDIR/$f"
         fi
     done
+    # 应用日志在 logs/apps/ 子目录：cdpcd 持有写入流，用 truncate 清空而非 rm，
+    # 保证正在写入的流不失效。
+    if [ -d "$CDPC_LOGDIR/apps" ] ; then
+        for af in "$CDPC_LOGDIR"/apps/* ; do
+            [ -f "$af" ] && : > "$af"
+        done
+    fi
 }
 
 handle_log() {
@@ -381,6 +391,9 @@ case $1 in
             if [ -d "$CDPC_LOGDIR" ] ; then
                 LOGFILES=`ls $CDPC_LOGDIR | sort`
                 for f in $LOGFILES ; do
+                    if [ ! -f "$CDPC_LOGDIR/$f" ] ; then
+                        continue
+                    fi
                     echo "$f:"
                     cat "$CDPC_LOGDIR/$f" -b
                 done

@@ -82,7 +82,11 @@ function authUser(uname, cgroup) {
     return false
   }
   
-  let ucfgpath = `${__dirname}/config/${au.user}.js`;
+  // 授权用户的配置文件用 user@<用户名> 命名，便于和普通服务配置区分。
+  // 服务名仍是 cdpcd-<用户名>（由配置内的 name 字段显式指定）。
+  let ucfgpath = `${__dirname}/config/user@${au.user}.js`;
+  // 旧格式（升级前为 config/<用户名>.js），迁移时清理，避免与新文件同 name 冲突。
+  let oldcfgpath = `${__dirname}/config/${au.user}.js`;
   
   let env_path = [
     `${au.home}/bin`, '/usr/local/sbin', '/usr/local/bin',
@@ -128,8 +132,11 @@ function authUser(uname, cgroup) {
           }
         };`
   
+        // 清理可能存在的旧格式配置文件，避免与新文件同 name 冲突。
+        try { fs.unlinkSync(oldcfgpath) } catch (err) {}
+
         fs.writeFileSync(ucfgpath, ucfg, {encoding: 'utf8'});
-  
+
         fs.writeFileSync(`${watchPath}/load`, ucfgpath, {encoding: 'utf8'});
   
       } catch (err) {
@@ -142,7 +149,9 @@ function authUser(uname, cgroup) {
     case 'remove':
       try {
         fs.unlinkSync(`./uauth/${au.user}`)
-        fs.unlinkSync(ucfgpath)
+        // 新旧两种格式的配置文件都尝试清理（文件不存在则忽略）。
+        try { fs.unlinkSync(ucfgpath) } catch (e) {}
+        try { fs.unlinkSync(oldcfgpath) } catch (e) {}
         fs.writeFileSync(`${watchPath}/remove/cdpcd-${au.user}`, `${Date.now()}`)
       } catch (err) {
         console.error(err)

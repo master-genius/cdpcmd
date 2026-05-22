@@ -79,55 +79,6 @@ function stateColor(st) {
   return `${color_text}${st}\x1b[0m`
 }
 
-/*
-Name      State       PID     CPU  MEM
-app1      RUNNING     1234    12%  12M  
-: ARGS
-: Cause
-: NET [receive: 123, transmit: 456]
-*/
-
-// [N3] name 列宽自适应：默认 23，按实际最长 name 动态调整（上限 52）
-let nameColWidth = 23
-
-function fmtLine(ld) {
-  let textobj = {}
-  for (let k in ld) {
-    switch (k) {
-      case 'name':
-        let dname = ld[k]
-        if (dname.length > nameColWidth - 1) {
-          dname = dname.substring(0, nameColWidth - 4) + '...'
-        }
-
-        textobj.name = dname.padEnd(nameColWidth, ' ')
-        break
-
-      case 'state':
-        let statetext = ld[k] + (ld.disabled ? '(D)' : '')
-        let statcolor = stateColor(statetext)
-        textobj.state = statcolor + ('').padEnd(13 - statetext.length, ' ')
-        break
-
-      case 'pid':
-        let pidstr = ld[k].toString()
-        textobj.pid = pidstr.padEnd(12, ' ')
-        break
-
-      case 'cpu':
-        let cpustr = ld[k] === 'CPU'  ? ld[k] : `${ld[k]}%`
-        textobj.cpu = cpustr.padEnd(9, ' ')
-        break
-
-      case 'mem':
-        textobj.mem = ld[k] === 'MEM' ? ld[k] : `${ld[k]}M`
-        break
-    }
-  }
-
-  return textobj
-}
-
 function matchAppName(name, applist, user='') {
   for (let a of applist) {
     let ind = a.indexOf(':')
@@ -151,6 +102,7 @@ function matchAppName(name, applist, user='') {
 
   return false
 }
+
 //默认单位是KB
 function fmtLimit(val, key) {
   let num_1M = 1024
@@ -164,95 +116,82 @@ function fmtLimit(val, key) {
   return val
 }
 
-function fmtLoadTable(ld) {
-  // [N3] 计算实际最长 name，自适应列宽（短名维持 23，长名最多 52）
-  let maxName = 4 // 'Name' 表头长度
-  for (let ch of ld.childs) {
-    if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) continue
-    if (ch.name && ch.name.length > maxName) maxName = ch.name.length
-  }
-  nameColWidth = Math.min(Math.max(maxName + 2, 23), 52)
+// 字符串的可见宽度：剥离 ANSI 转义码后的长度。
+// 服务名/状态/数字均为 ASCII，长度即显示宽度。
+function visibleWidth(s) {
+  return String(s).replace(/\x1b\[[0-9;]*m/g, '').length
+}
 
-  let tableHead = {
-    //最长28个字符
-    name: 'Name',
-    // RUNNING PAUSE EXIT PREPARE
-    state: 'State',
-    //最长13个字符
-    pid: 'PID',
-    // 最长7个字符
-    cpu: 'CPU',
-    mem: 'MEM',
-  }
+/**
+ * 渲染 console.table 风格的边框表。
+ * 列宽按可见宽度自适应；单元格左对齐；状态列可含 ANSI 颜色码，不影响列宽。
+ * @param {string[]} headers 表头
+ * @param {Array<string[]>} rows 每行的单元格数组
+ * @returns {string} 完整表格文本
+ */
+function renderTable(headers, rows) {
+  let cols = headers.length
+  let widths = headers.map(h => visibleWidth(h))
 
-  let tables = []
-
-  let headobj = fmtLine(tableHead)
-  tables.push([
-    headobj.name,
-    headobj.state,
-    headobj.pid,
-    headobj.cpu,
-    headobj.mem
-  ])
-
-  for (let ch of ld.childs) {
-    if (applist.length > 0 && !matchAppName(ch.name, applist, args.user)) {
-      continue
-    }
-
-    let chobj = fmtLine(ch)
-
-    tables.push([
-      chobj.name,
-      chobj.state,
-      chobj.pid,
-      chobj.cpu,
-      chobj.mem
-    ])
-
-    if (args.list) {
-      tables.push([
-        '  @cmd ',
-        ch.command
-      ])
-
-      tables.push([
-        '  @args ',
-        ch.args.join(' ')
-      ])
-
-      if (ch.net) {
-        tables.push([
-          '  @net ',
-          `receive: ${ch.net.recvBytes}, `,
-          `transmit: ${ch.net.transmitBytes}`
-        ])
-      }
-
-      if (ch.limit) {
-        let keys = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
-        let limits = ['  @limit:']
-
-        keys.forEach(x => {
-          if (ch.limit[x] !== undefined && ch.limit[x] > 0) {
-            limits.push(`    ${x}: ${fmtLimit(ch.limit[x], x)}`)
-          }
-        })
-
-        limits.length > 1 && tables.push([limits.join('\n')])
-      }
-
-      tables.push([
-        '  @cause ',
-        ch.cause || '--'
-      ])
-
-      tables.push([''])
+  for (let row of rows) {
+    for (let i = 0; i < cols; i++) {
+      let w = visibleWidth(row[i] === undefined ? '' : row[i])
+      if (w > widths[i]) widths[i] = w
     }
   }
 
-  return tables
+  // 单元格：内容左对齐补到列宽，两侧各留一个空格
+  let cell = (text, i) => {
+    text = (text === undefined || text === null) ? '' : String(text)
+    let pad = widths[i] - visibleWidth(text)
+    return ' ' + text + ' '.repeat(pad > 0 ? pad : 0) + ' '
+  }
+
+  let border = (left, mid, right) =>
+    left + widths.map(w => '─'.repeat(w + 2)).join(mid) + right
+
+  let rowLine = (cells) => {
+    let out = []
+    for (let i = 0; i < cols; i++) out.push(cell(cells[i], i))
+    return '│' + out.join('│') + '│'
+  }
+
+  let lines = [border('┌', '┬', '┐'), rowLine(headers), border('├', '┼', '┤')]
+  for (let row of rows) lines.push(rowLine(row))
+  lines.push(border('└', '┴', '┘'))
+
+  return lines.join('\n')
+}
+
+// -l 模式：渲染单个应用的详情块
+function renderDetail(ch) {
+  let lines = [ch.name]
+
+  let kv = (k, v) => {
+    lines.push('  ' + k.padEnd(8, ' ') + ((v === undefined || v === '') ? '--' : v))
+  }
+
+  kv('cmd', ch.command)
+  kv('args', Array.isArray(ch.args) ? ch.args.join(' ') : '')
+
+  if (ch.net) {
+    kv('net', `receive ${ch.net.recvBytes}  transmit ${ch.net.transmitBytes}`)
+  }
+
+  if (ch.limit) {
+    let keys = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
+    let parts = []
+    keys.forEach(x => {
+      if (ch.limit[x] !== undefined && ch.limit[x] > 0) {
+        parts.push(`${x} ${fmtLimit(ch.limit[x], x)}`)
+      }
+    })
+    if (parts.length > 0) kv('limit', parts.join('  '))
+  }
+
+  kv('cause', ch.cause || '--')
+
+  return lines.join('\n')
 }
 
 async function getLoadData(loadfile, loop=10) {
@@ -311,8 +250,12 @@ async function getLoadData(loadfile, loop=10) {
       process.exit(0)
     }
 
-    let tables = fmtLoadTable(ld)
-    if (tables.length === 1) {
+    // 过滤出要展示的子进程
+    let childs = (ld.childs || []).filter(ch => {
+      return !(applist.length > 0 && !matchAppName(ch.name, applist, args.user))
+    })
+
+    if (childs.length === 0) {
       process.exit(0)
     }
 
@@ -321,13 +264,34 @@ async function getLoadData(loadfile, loop=10) {
       console.log(`\x1b[7m${user_title}\x1b[0m`)
     }
 
-    for (let l of tables) {
-      console.log(l.join(''))
+    // 汇总表：console.table 风格的边框表
+    let headers = ['Name', 'State', 'PID', 'CPU', 'MEM']
+
+    let rows = childs.map(ch => {
+      let state = (ch.state || '') + (ch.disabled ? '(D)' : '')
+      return [
+        ch.name,
+        stateColor(state),
+        ch.pid ? String(ch.pid) : '-',
+        (typeof ch.cpu === 'number') ? `${ch.cpu}%` : '-',
+        (typeof ch.mem === 'number') ? `${ch.mem}M` : '-'
+      ]
+    })
+
+    console.log(renderTable(headers, rows))
+
+    // -l：每个应用的详情块，放在汇总表下方
+    if (args.list) {
+      for (let ch of childs) {
+        console.log('')
+        console.log(renderDetail(ch))
+      }
     }
+
     console.log('')
   } catch (err) {
     console.error(err)
     process.exit(1)
   }
 
-})();
+})()
