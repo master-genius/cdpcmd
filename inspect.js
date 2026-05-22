@@ -70,13 +70,14 @@ line('monitorNetData', ch.monitorNetData)
 line('after', Array.isArray(ch.after) ? ch.after.join(', ') : '-')
 line('cause', ch.cause)
 
-function num(v) {
-  return (typeof v === 'number' && !isNaN(v)) ? v : 0
+// cpu/mem 是 loadinfo 里格式化后的值（字符串，EXIT 状态为数字 0），有值就原样显示。
+function fmtVal(v, unit) {
+  return (v === undefined || v === null || v === '') ? '-' : `${v}${unit}`
 }
 
 section('资源')
-line('cpu', `${num(ch.cpu)}%`)
-line('mem', `${num(ch.mem)}M`)
+line('cpu', fmtVal(ch.cpu, '%'))
+line('mem', fmtVal(ch.mem, 'M'))
 if (ch.net) {
   line('net.recv', ch.net.recvBytes)
   line('net.transmit', ch.net.transmitBytes)

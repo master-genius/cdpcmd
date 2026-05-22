@@ -267,14 +267,20 @@ async function getLoadData(loadfile, loop=10) {
     // 汇总表：console.table 风格的边框表
     let headers = ['Name', 'State', 'PID', 'CPU', 'MEM']
 
+    // cpu/mem 在 loadinfo dump 里是经 fmt_percent / fmt_mem_value 格式化后的字符串
+    // （EXIT 状态下为数字 0）。只要有值就显示，缺失才显示 -，不按类型卡。
+    let fmtVal = (v, unit) => {
+      return (v === undefined || v === null || v === '') ? '-' : `${v}${unit}`
+    }
+
     let rows = childs.map(ch => {
       let state = (ch.state || '') + (ch.disabled ? '(D)' : '')
       return [
         ch.name,
         stateColor(state),
         ch.pid ? String(ch.pid) : '-',
-        (typeof ch.cpu === 'number') ? `${ch.cpu}%` : '-',
-        (typeof ch.mem === 'number') ? `${ch.mem}M` : '-'
+        fmtVal(ch.cpu, '%'),
+        fmtVal(ch.mem, 'M')
       ]
     })
 
