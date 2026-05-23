@@ -301,18 +301,6 @@ clear_logs() {
     fi
 }
 
-handle_log() {
-    case $1 in
-        clear)
-            clear_logs
-            ;;
-        clearall)
-            clear_logs
-            > "$CDPC_LOGDIR/cdpcd.log"
-            ;;
-    esac
-}
-
 parse_args $@
 
 # 命令审计：变更类操作追加一行到 audit.log
@@ -387,7 +375,42 @@ case $1 in
         ;;
 
     log)
-        if [ "$#" -lt 2 ] ; then
+        # 解析 flag 参数
+        LOG_CLEAR=0
+        LOG_CLEARALL=0
+        LOG_TARGET=''
+        LOG_FOLLOW=0
+        shift
+        while [ $# -gt 0 ] ; do
+            case "$1" in
+                --clear)
+                    LOG_CLEAR=1
+                    ;;
+                --clear-all)
+                    LOG_CLEARALL=1
+                    ;;
+                -f)
+                    LOG_FOLLOW=1
+                    ;;
+                *)
+                    LOG_TARGET="$1"
+                    ;;
+            esac
+            shift
+        done
+
+        # --clear / --clear-all
+        if [ "$LOG_CLEARALL" -eq 1 ] ; then
+            clear_logs
+            > "$CDPC_LOGDIR/cdpcd.log"
+            exit 0
+        elif [ "$LOG_CLEAR" -eq 1 ] ; then
+            clear_logs
+            exit 0
+        fi
+
+        # 无目标：显示 cdpcd 自身日志
+        if [ -z "$LOG_TARGET" ] ; then
             if [ -d "$CDPC_LOGDIR" ] ; then
                 LOGFILES=`ls $CDPC_LOGDIR | sort`
                 for f in $LOGFILES ; do
@@ -401,7 +424,44 @@ case $1 in
             exit 0
         fi
 
-        handle_log $2
+        # 指定应用名：查看应用日志
+        LOG_NAME="$LOG_TARGET"
+        case "$LOG_NAME" in
+            *:*)
+                LOG_USER="${LOG_NAME%%:*}"
+                LOG_APP="${LOG_NAME#*:}"
+                ;;
+            *)
+                LOG_USER=""
+                LOG_APP="$LOG_NAME"
+                ;;
+        esac
+
+        if [ -z "$LOG_USER" ] || [ "$LOG_USER" = "root" ] ; then
+            LOG_FILE="$CDPC_LOGDIR/apps/$LOG_APP.log"
+        else
+            if [ "$UID" -ne 0 ] ; then
+                echo "deny!! 普通用户只能查看自己的服务。"
+                exit 1
+            fi
+            UHOME=`cat "$CDPC_UAUTH/$LOG_USER" 2>/dev/null`
+            if [ -z "$UHOME" ] ; then
+                echo "$LOG_USER : 未授权用户"
+                exit 1
+            fi
+            LOG_FILE="$UHOME/.cdpc/logs/apps/$LOG_APP.log"
+        fi
+
+        if [ ! -f "$LOG_FILE" ] ; then
+            echo "未找到应用日志：$LOG_FILE"
+            exit 1
+        fi
+
+        if [ "$LOG_FOLLOW" -eq 1 ] ; then
+            tail -f "$LOG_FILE"
+        else
+            tail -n 200 "$LOG_FILE"
+        fi
         ;;
 
     args)
@@ -493,46 +553,24 @@ case $1 in
         fi
         ;;
 
-    #查看某个服务的 stdout/stderr 输出日志
+    #查看某个服务的 stdout/stderr 输出日志（兼容旧命令，等价于 cdpc log <name>）
     applog)
-        check_args2_exit $# 2
-        APPLOG_NAME="$2"
-        case "$APPLOG_NAME" in
-            *:*)
-                APPLOG_USER="${APPLOG_NAME%%:*}"
-                APPLOG_APP="${APPLOG_NAME#*:}"
-                ;;
-            *)
-                APPLOG_USER=""
-                APPLOG_APP="$APPLOG_NAME"
-                ;;
-        esac
-
-        if [ -z "$APPLOG_USER" ] || [ "$APPLOG_USER" = "root" ] ; then
-            APPLOG_FILE="$CDPC_LOGDIR/apps/$APPLOG_APP.log"
-        else
-            if [ "$UID" -ne 0 ] ; then
-                echo "deny!! 普通用户只能查看自己的服务。"
-                exit 1
-            fi
-            UHOME=`cat "$CDPC_UAUTH/$APPLOG_USER" 2>/dev/null`
-            if [ -z "$UHOME" ] ; then
-                echo "$APPLOG_USER : 未授权用户"
-                exit 1
-            fi
-            APPLOG_FILE="$UHOME/.cdpc/logs/apps/$APPLOG_APP.log"
-        fi
-
-        if [ ! -f "$APPLOG_FILE" ] ; then
-            echo "未找到应用日志：$APPLOG_FILE"
-            exit 1
-        fi
-
-        if [ "$3" = "-f" ] ; then
-            tail -f "$APPLOG_FILE"
-        else
-            tail -n 200 "$APPLOG_FILE"
-        fi
+        # 将 applog 参数重组后委托给 log 命令处理
+        NEW_ARGS=''
+        APPLOG_FOLLOW=0
+        shift
+        while [ $# -gt 0 ] ; do
+            case "$1" in
+                -f)
+                    APPLOG_FOLLOW=1
+                    ;;
+                *)
+                    NEW_ARGS="$NEW_ARGS $1"
+                    ;;
+            esac
+            shift
+        done
+        $0 log $NEW_ARGS $([ "$APPLOG_FOLLOW" -eq 1 ] && echo '-f')
         ;;
 
     #查看命令审计日志
@@ -648,6 +686,7 @@ case $1 in
         echo "  cdpc pause  [应用名称] 暂停应用"
         echo "  cdpc resume  [应用名称] 恢复暂停的应用"
         echo "  cdpc restart [应用名称] 重启应用"
+        echo "  cdpc log [应用名称] 查看应用日志（-f 持续跟踪，--clear 清理日志，--clear-all 清理全部含cdpcd日志）"
         echo "  cdpc auth 查看自己是否被授权/查看授权信息"
         echo "  cdpc service-start 启动cdpcd服务"
         echo "  cdpc service-stop 停止cdpcd服务"
