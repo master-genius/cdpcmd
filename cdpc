@@ -487,20 +487,45 @@ case $1 in
         ;;
 
     status)
-        if [ -f "$CDPC_LOADINFO" ] ; then
-            node $CDPC_INS_DIR/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
-        fi
-        if [ "$UID" -eq 0 ] ; then
-            if [ -d "$CDPC_UAUTH" ] ; then
-                UAULIST=`ls $CDPC_UAUTH`
-                UCDPCD_LOAD=''
-                for u in $UAULIST ; do
+        # 检测 --runtime：若存在则收集所有 (user, loadfile) 对，单进程进入 TUI 主循环
+        if echo " $ARGS " | grep -qE -- ' --runtime(=| )' ; then
+            RUNTIME_TARGETS=""
+            if [ -f "$CDPC_LOADINFO" ] ; then
+                RUNTIME_TARGETS="$USER	$CDPC_LOADINFO"
+            fi
+            if [ "$UID" -eq 0 ] && [ -d "$CDPC_UAUTH" ] ; then
+                for u in `ls $CDPC_UAUTH` ; do
                     UHOMEDIR=`cat $CDPC_UAUTH/$u`
                     UCDPCD_LOAD="$UHOMEDIR/.cdpc/cdpcd-load.log"
                     if [ -f "$UCDPCD_LOAD" ] ; then
-                        node $CDPC_INS_DIR/outstatus.js $UCDPCD_LOAD $ARGS --user $u
+                        if [ -z "$RUNTIME_TARGETS" ] ; then
+                            RUNTIME_TARGETS="$u	$UCDPCD_LOAD"
+                        else
+                            RUNTIME_TARGETS="$RUNTIME_TARGETS
+$u	$UCDPCD_LOAD"
+                        fi
                     fi
                 done
+            fi
+            if [ -n "$RUNTIME_TARGETS" ] ; then
+                CDPC_RUNTIME_TARGETS="$RUNTIME_TARGETS" node $CDPC_INS_DIR/runstatus.js $ARGS
+            fi
+        else
+            if [ -f "$CDPC_LOADINFO" ] ; then
+                node $CDPC_INS_DIR/outstatus.js $CDPC_LOADINFO $ARGS --user $USER
+            fi
+            if [ "$UID" -eq 0 ] ; then
+                if [ -d "$CDPC_UAUTH" ] ; then
+                    UAULIST=`ls $CDPC_UAUTH`
+                    UCDPCD_LOAD=''
+                    for u in $UAULIST ; do
+                        UHOMEDIR=`cat $CDPC_UAUTH/$u`
+                        UCDPCD_LOAD="$UHOMEDIR/.cdpc/cdpcd-load.log"
+                        if [ -f "$UCDPCD_LOAD" ] ; then
+                            node $CDPC_INS_DIR/outstatus.js $UCDPCD_LOAD $ARGS --user $u
+                        fi
+                    done
+                fi
             fi
         fi
         ;;
