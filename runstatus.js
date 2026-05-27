@@ -20,7 +20,7 @@
 const npargv = require('npargv')
 
 const model = require('./lib/status-model')
-const { renderTable } = require('./lib/status-render')
+const { renderTable, truncateByVisible } = require('./lib/status-render')
 const tty = require('./lib/status-tty')
 
 let arg = npargv({
@@ -123,7 +123,9 @@ function runTTY() {
   let render = () => {
     if (!ctrl) return
     let { rows: termRows, cols: termCols } = ctrl.getSize()
-    let topRows = state.sysLine ? 1 : 0
+    // sysLine 可能含换行（用于上下留白），按行拆分后全部 sticky-top
+    let topLines = state.sysLine ? state.sysLine.split('\n') : []
+    let topRows = topLines.length
     let footerRows = 1
     let visibleRows = Math.max(1, termRows - topRows - footerRows)
     let total = state.content.length
@@ -148,12 +150,11 @@ function runTTY() {
     // 反色一行作为状态条
     let footerLine = '\x1b[7m' + footer + ' '.repeat(Math.max(0, termCols - footer.length)) + '\x1b[0m'
 
-    // 每行裁切到 termCols（含 ANSI 时可能截到 escape 中间，但状态/title 之外行宽通常 ≤ cols；
-    // 极端窄屏下用纯字符近似截断）
-    let safeLine = (s) => s.length > termCols ? s.slice(0, termCols) : s
+    // 按可见宽度（剥离 ANSI）裁切到 termCols；避免把 escape 序列截在中间
+    let safeLine = (s) => truncateByVisible(s, termCols)
 
     let frame = []
-    if (state.sysLine) frame.push(safeLine(state.sysLine))
+    for (let ln of topLines) frame.push(safeLine(ln))
     for (let ln of window) frame.push(safeLine(ln))
     frame.push(footerLine)
     tty.fullRedraw(ctrl.write, frame)
