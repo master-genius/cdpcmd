@@ -73,13 +73,15 @@ if (targets.length === 0) {
 }
 
 // ------------------------------------------------------------
-// 一次性扫描：返回扁平化的渲染行序列
+// 一次性扫描：返回扁平化的渲染行序列 + 第一个非空 sys（host-wide 信息，跨 cdpcd 实例一致）
 // ------------------------------------------------------------
 async function snapshot(detail) {
   let allLines = []
+  let sysSource = null
   for (let t of targets) {
     let ld = await model.readLoad(t.loadfile).catch(() => null)
     if (!ld) continue
+    if (!sysSource && ld.sys) sysSource = ld
     let childs = model.filterChilds(ld, applist, t.user)
     if (childs.length === 0) continue
     let rows = model.buildRows(childs, { detail })
@@ -92,15 +94,15 @@ async function snapshot(detail) {
     if (allLines.length > 0) allLines.push('')  // 表间空行
     for (let ln of lines) allLines.push(ln)
   }
-  return allLines
+  return { lines: allLines, sys: sysSource }
 }
 
 // ------------------------------------------------------------
 // 非 TTY：一次性打印（与 outstatus 多目标串联等价）
 // ------------------------------------------------------------
 async function runSnapshotOnce() {
-  let lines = await snapshot(args.list)
-  if (lines.length > 0) console.log(lines.join('\n'))
+  let snap = await snapshot(args.list)
+  if (snap.lines.length > 0) console.log(snap.lines.join('\n'))
 }
 
 // ------------------------------------------------------------
@@ -111,6 +113,7 @@ function runTTY() {
     detail: args.list,
     firstVisibleRow: 0,
     content: [],         // 当前帧的全部内容行
+    sysLine: '',         // 当前帧顶部 sticky 行（整机 CPU/MEM）
     quitting: false,
     needRedraw: false
   }
@@ -120,8 +123,9 @@ function runTTY() {
   let render = () => {
     if (!ctrl) return
     let { rows: termRows, cols: termCols } = ctrl.getSize()
+    let topRows = state.sysLine ? 1 : 0
     let footerRows = 1
-    let visibleRows = Math.max(1, termRows - footerRows)
+    let visibleRows = Math.max(1, termRows - topRows - footerRows)
     let total = state.content.length
 
     // 滚动夹紧
@@ -148,13 +152,17 @@ function runTTY() {
     // 极端窄屏下用纯字符近似截断）
     let safeLine = (s) => s.length > termCols ? s.slice(0, termCols) : s
 
-    let frame = window.map(safeLine)
+    let frame = []
+    if (state.sysLine) frame.push(safeLine(state.sysLine))
+    for (let ln of window) frame.push(safeLine(ln))
     frame.push(footerLine)
     tty.fullRedraw(ctrl.write, frame)
   }
 
   let refresh = async () => {
-    state.content = await snapshot(state.detail)
+    let snap = await snapshot(state.detail)
+    state.content = snap.lines
+    state.sysLine = snap.sys ? model.fmtSysLoad(snap.sys) : ''
     render()
   }
 
