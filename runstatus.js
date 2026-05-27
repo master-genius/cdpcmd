@@ -84,7 +84,11 @@ async function snapshot(detail) {
     if (childs.length === 0) continue
     let rows = model.buildRows(childs, { detail })
     let title = t.user ? `User: ${t.user}` : undefined
-    let lines = renderTable(model.SUMMARY_HEADERS, rows, { title })
+    let lines = renderTable(model.SUMMARY_HEADERS, rows, {
+      title,
+      minWidths: model.SUMMARY_MIN_WIDTHS,
+      boldHeader: true
+    })
     if (allLines.length > 0) allLines.push('')  // 表间空行
     for (let ln of lines) allLines.push(ln)
   }

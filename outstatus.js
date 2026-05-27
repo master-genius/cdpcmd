@@ -111,7 +111,11 @@ try {
     let rows = model.buildRows(childs, { detail: args.list })
     let title = args.user ? `User: ${args.user}` : undefined
 
-    console.log(renderTable(model.SUMMARY_HEADERS, rows, { title }).join('\n'))
+    console.log(renderTable(model.SUMMARY_HEADERS, rows, {
+      title,
+      minWidths: model.SUMMARY_MIN_WIDTHS,
+      boldHeader: true
+    }).join('\n'))
     console.log('')
   } catch (err) {
     console.error(err)
