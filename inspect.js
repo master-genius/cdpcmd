@@ -86,12 +86,30 @@ function fmtVal(v, unit) {
 }
 
 section('资源')
+// cpu / mem 永远是服务自身进程的占用
 line('cpu', fmtVal(ch.cpu, '%'))
 line('mem', fmtVal(ch.mem, 'M'))
+
+// 进程树：自身 + 全部后代。包装脚本、master/worker 这类服务自身看不出负载
+if (ch.procCount > 1) {
+  line('cpu(tree)', fmtVal(ch.cpuTotal, '%'))
+  line('mem(tree)', fmtVal(ch.memTotal, 'M'))
+  line('procs', ch.procCount)
+}
 if (ch.net) {
   line('net.recv', ch.net.recvBytes)
   line('net.transmit', ch.net.transmitBytes)
 }
+if (Array.isArray(ch.procs) && ch.procs.length > 1) {
+  section('进程树')
+  for (let p of ch.procs) {
+    console.log('  ' + String(p.pid).padStart(8, ' ')
+      + '  ' + String(p.cpu + '%').padStart(8, ' ')
+      + '  ' + String(p.mem + 'M').padStart(10, ' ')
+      + '  ' + (p.cmd || p.comm || ''))
+  }
+}
+
 if (ch.limit && typeof ch.limit === 'object') {
   let lk = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
   for (let k of lk) {
