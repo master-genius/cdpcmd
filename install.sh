@@ -27,19 +27,68 @@ SYSTEMD_PATH=/lib/systemd/system
 
 INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js runstatus.js lib config init-start.js combine-status-result.js parseNameApp.js disable-or-enable.js inspect.js sockop.js socketpath.js makesystemd.js mktk.js"
 
+# 清理旧版文件通道残留：新版不再读写它们，留着会让 CLI 把"daemon 没跑"
+# 误判成"升级后尚未重启"（CLI 用这个目录作为半升级状态的线索）。
+# 必须在 daemon 重启之后执行——旧 daemon 的自愈逻辑会把目录重建回来。
+clean_legacy_channel() {
+    rm -rf /tmp/cdpcd_watch
+
+    if [ -d "$CDPC_DIR/uauth" ] ; then
+        for u in `ls "$CDPC_DIR/uauth" 2>/dev/null` ; do
+            UHOME=`cat "$CDPC_DIR/uauth/$u" 2>/dev/null`
+            case "$UHOME" in
+                /*) rm -rf "$UHOME/.cdpc/watch" ;;
+            esac
+        done
+    fi
+}
+
+# 等待新 daemon 建立 sock 控制通道，明确报告结果而不是静默返回。
+wait_channel_ready() {
+    for i in 1 2 3 4 5 6 7 8 9 10 ; do
+        if [ -S /run/cdpcd/cdpcd.sock ] || [ -S "$CDPC_DIR/run/cdpcd.sock" ] ; then
+            echo "控制通道已就绪。"
+            clean_legacy_channel
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "警告：未检测到控制通道（/run/cdpcd/cdpcd.sock）。"
+    echo "请检查服务状态与 $CDPC_DIR/logs/cdpcd.log。"
+    return 1
+}
+
 init_systemd_service() {
     node makesystemd.js > tmp/$SYSTEMD_FILE
 
     mv tmp/$SYSTEMD_FILE $SYSTEMD_PATH
-    
+
     systemctl daemon-reload
-    
-    IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE`
+
+    IS_ENABLED=`systemctl is-enabled $SYSTEMD_FILE 2>/dev/null`
 
     if [ "$IS_ENABLED" != "enabled" ] ; then
         systemctl enable $SYSTEMD_FILE
         systemctl start $SYSTEMD_FILE
+        return 0
     fi
+
+    # 已启用说明是升级：控制通道从文件事件改为 unix socket 后，
+    # 旧 daemon 不会创建 sock，而新 CLI 只认 sock——不重启就会留下
+    # 「命令全部失效但看不出原因」的窗口。所以升级必须重启。
+    #
+    # 注意：被管子进程一律非 detached，与 cdpcd 同生死，
+    # 重启 cdpcd 会连带重启全部服务（这是既有行为，不是本次改动引入）。
+    if systemctl is-active --quiet $SYSTEMD_FILE ; then
+        echo "检测到 cdpcd 正在运行，升级需要重启它以启用 sock 控制通道。"
+        echo "注意：重启会连带重启全部被管服务（子进程与 cdpcd 同生死）。"
+        systemctl restart $SYSTEMD_FILE
+    else
+        systemctl start $SYSTEMD_FILE
+    fi
+
+    wait_channel_ready
 }
 
 init_rc_service() {
@@ -58,7 +107,18 @@ init_rc_service() {
         ln -s ../init.d/cdpc "/etc/$r/S07cdpc"
     done
     
-    /etc/init.d/cdpc start
+    # 升级时必须 restart：cdpc-rc-service 的 start 检测到进程在跑就直接返回，
+    # 那样跑的仍是旧代码（无 sock 通道），新 CLI 会全部失效。
+    # 同样注意：重启 cdpcd 会连带重启全部被管服务。
+    if ps -e -o ppid,args | grep -E -i '^\s*1\s+node.+cdpcd' | grep -qv grep ; then
+        echo "检测到 cdpcd 正在运行，升级需要重启它以启用 sock 控制通道。"
+        echo "注意：重启会连带重启全部被管服务（子进程与 cdpcd 同生死）。"
+        /etc/init.d/cdpc restart
+    else
+        /etc/init.d/cdpc start
+    fi
+
+    wait_channel_ready
 }
 
 IS_SYSTEMD=`ps -e -o ppid,pid,comm | grep -E -i '^\s*0\s+1\s+systemd'`
@@ -72,6 +132,14 @@ install_cdpc () {
     fi
 
     sudo cp -R $INSTALL_LIST $CDPC_DIR
+
+    # cp -R 只覆盖不删除：清理已从项目移除的旧脚本，
+    # 否则它们会永久残留在安装目录里（文件通道时代的三个脚本）
+    for stale in mapnametocmd.js noticeApp.js get_app_state.js ; do
+        if [ -f "$CDPC_DIR/$stale" ] ; then
+            rm -f "$CDPC_DIR/$stale"
+        fi
+    done
 
     if [ ! -d "$CDPC_DIR/config" ] ; then
         mkdir "$CDPC_DIR/config"

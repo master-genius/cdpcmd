@@ -90,7 +90,11 @@ if (!sockFile) {
         process.exit(3)
       }
 
-      console.log(`  ${args.user || 'root'}  (${res.message})`)
+      // 提示可能是多行（如半升级状态的操作建议）：首行进括号，其余单独成行，
+      // 避免括号里夹换行、也避免调用方按行处理时错乱
+      let lines = String(res.message).split('\n')
+      console.log(`  ${args.user || 'root'}  (${lines[0]})`)
+      for (let extra of lines.slice(1)) console.log(extra)
       process.exit(0)
     }
 

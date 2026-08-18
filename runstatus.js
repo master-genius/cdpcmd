@@ -141,7 +141,10 @@ async function snapshot(detail) {
 
     if (!res.ok) {
       if (allLines.length > 0) allLines.push('')
-      allLines.push(`  ${t.user || 'root'}  (${res.message})`)
+      // TUI 按行计算帧高，单个元素里绝不能含换行
+      let lines = String(res.message).split('\n')
+      allLines.push(`  ${t.user || 'root'}  (${lines[0]})`)
+      for (let extra of lines.slice(1)) allLines.push(extra)
       continue
     }
 
