@@ -3,8 +3,10 @@
 const fs = require('fs')
 const npargv = require('npargv')
 
-let ROOT_CDPC_CONFIG_DISABLED = '/usr/local/cdpc/config/disabled'
-let UAUTH_DIR = '/usr/local/cdpc/uauth'
+let ROOT_CDPC_CONFIG_DISABLED = `${__dirname}/config/disabled`
+
+const sockpath = require('./lib/sockpath')
+const {getUser} = require('./lib/getuser.js')
 
 let euid = process.geteuid()
 
@@ -33,17 +35,27 @@ for (let name of namelist) {
     })
   } else {
     try {
-      let home_path = euid === 0 
-                        ? fs.readFileSync(`${UAUTH_DIR}/${nm[0]}`, {encoding: 'utf8'})
-                        : process.env.HOME
+      // uauth 内容必须校验（C10）：原实现直接把文件内容当路径拼接，
+      // 内容为空会得到 "/.cdpc/..."，带换行/空格则静默指向错误路径。
+      let home_path = euid === 0
+                        ? sockpath.readAuthHome(__dirname, nm[0])
+                        : sockpath.currentHome()
 
-      let file = `${home_path}/.cdpc/config/disabled/${nm[1]}`
-      
+      if (!home_path) {
+        console.error(`${nm[0]}: 未授权用户或 uauth 记录损坏`)
+        continue
+      }
+
       cmdlist.push({
         op: arg.command,
-        file: file,
+        file: `${home_path}/.cdpc/config/disabled/${nm[1]}`,
         text: name,
-        mode: euid === 0 ? 0o666 : 0o644
+        // C9：原来 root 替用户写这个标记用 0o666（世界可写），
+        // 任何能进入该 home 的本地用户都能改写他人服务的禁用标记。
+        // 统一 0644——属主目录归该用户，他仍可自行删除该文件（enable）。
+        mode: 0o644,
+        // root 代写时把属主归还给目标用户，与其余配置文件保持一致
+        chownUser: euid === 0 ? nm[0] : ''
       })
     } catch (err) {
       console.error(err)
@@ -60,6 +72,11 @@ for (let c of cmdlist) {
           flag: 'w',
           mode: c.mode
         })
+
+        if (c.chownUser) {
+          let u = getUser(c.chownUser)
+          u && fs.chownSync(c.file, u.uid, u.gid)
+        }
       } catch (err) {
         console.error(err)
       }

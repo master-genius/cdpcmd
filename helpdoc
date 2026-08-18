@@ -121,4 +121,42 @@ reload 重新加载配置，是纯粹的配置同步操作：
 注意：仅修改 restart、limit、env 等字段后 reload 不会重启服务，
 需要显式 cdpc restart 应用名称 才能让这些改动生效。
 
+.SH 控制通道
 
+.sp
+cdpc 命令与 cdpcd 服务之间通过 unix socket 通信，每个 daemon 一个 socket，
+权限为 0600、属主专用：
+
+.sp
+· root 的 socket：/run/cdpcd/cdpcd.sock（不可用时回退到 /usr/local/cdpc/run/cdpcd.sock）
+
+.sp
+· 普通用户的 socket：$HOME/.cdpc/cdpcd.sock
+
+.sp
+普通用户只能查看和控制自己的服务，指定他人的服务（用户:应用名 形式）会被拒绝；
+root 可以查看和控制所有被授权用户的服务，跨用户查询时按 uauth 记录逐个连接后汇总展示。
+
+.sp
+可以用 nc 直接调试：
+
+.sp
+echo '{"v":1,"id":1,"op":"status"}' | nc -U /run/cdpcd/cdpcd.sock
+
+.SH 故障排查
+
+.sp
+命令报"daemon 未运行"，说明 socket 不存在或连接被拒绝，
+可用 cdpc service-start 启动服务，或用 systemctl status cdpcd 查看。
+
+.sp
+命令报"cdpcd 无响应"，说明 socket 在但连接超时，daemon 可能卡死，
+此时不会展示任何陈旧数据，需要检查 cdpcd 进程与 logs/cdpcd.log。
+
+.sp
+命令报"无权限连接"，说明 socket 的权限或属主与当前身份不符，
+检查该路径的属主是否为对应用户、权限是否为 0600。
+
+.sp
+status 中某个用户显示为括号标注（而不是服务表格），
+说明该用户的 cdpcd 未运行或不可达，其他用户的展示不受影响。

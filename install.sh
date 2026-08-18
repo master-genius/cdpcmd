@@ -25,7 +25,7 @@ SYSTEMD_FILE=cdpcd.service
 
 SYSTEMD_PATH=/lib/systemd/system
 
-INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js runstatus.js lib config init-start.js combine-status-result.js mapnametocmd.js get_app_state.js parseNameApp.js noticeApp.js disable-or-enable.js inspect.js"
+INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js runstatus.js lib config init-start.js combine-status-result.js parseNameApp.js disable-or-enable.js inspect.js sockop.js socketpath.js makesystemd.js mktk.js"
 
 init_systemd_service() {
     node makesystemd.js > tmp/$SYSTEMD_FILE

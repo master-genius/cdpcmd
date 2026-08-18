@@ -50,6 +50,16 @@ function fmtSystemd (options) {
   text += `KillMode=mixed\n`
   text += `TimeoutStopSec=20\n`
 
+  // RuntimeDirectory=cdpcd：由 systemd 创建并持有 /run/cdpcd，
+  // 作为 sock 控制通道与 pid 文件的存放位置。
+  //   · /run 是 tmpfs，不受 systemd-tmpfiles 对 /tmp 的年龄清理影响
+  //     （历史故障的根因就是通道文件放在 /tmp 被按 10 天年龄清理）；
+  //   · RuntimeDirectoryPreserve=yes 保证 restart 期间目录不被删除，
+  //     否则重启瞬间 sock 的父目录消失，daemon 需要自愈重建，徒增窗口。
+  text += `RuntimeDirectory=cdpcd\n`
+  text += `RuntimeDirectoryMode=0755\n`
+  text += `RuntimeDirectoryPreserve=yes\n`
+
   if (!options.restart) options.restart = 'always'
 
   text += `Restart=${options.restart}\n`

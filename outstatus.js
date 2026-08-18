@@ -1,6 +1,5 @@
 'use strict'
 
-const fs = require('fs')
 const npargv = require('npargv')
 
 const model = require('./lib/status-model')
@@ -68,20 +67,34 @@ if (process.argv.length < 3) {
   process.exit(1)
 }
 
-let loadfile = process.argv[2]
+let sockFile = process.argv[2]
 
-try {
-  fs.accessSync(loadfile)
-} catch (err) {
-  if (err.code === 'ENOENT') process.exit(0)
-  console.error(err)
+if (!sockFile) {
+  console.error('用法: outstatus.js <sockFile> [name...]')
   process.exit(1)
 }
 
 ;(async () => {
   try {
-    let ld = await model.readLoad(loadfile)
-    if (!ld) process.exit(0)
+    let res = await model.readStatus(sockFile)
+
+    if (!res.ok) {
+      /**
+       * C1/C5 根治：原实现"文件不存在 → exit 0 什么都不输出"，用户无法区分
+       * 没有服务 / daemon 没跑 / 文件被清理。现在四分类都必须说话：
+       *   - --has 是命令链路的前置查询，报到 stderr 并用 exit 3 与"服务不存在"(exit 0) 区分；
+       *   - 展示模式打印带用户名的标注行，root 逐用户聚合时不会因某个用户失败而中断。
+       */
+      if (args.has) {
+        console.error(`${args.user || 'root'}: ${res.message}`)
+        process.exit(3)
+      }
+
+      console.log(`  ${args.user || 'root'}  (${res.message})`)
+      process.exit(0)
+    }
+
+    let ld = res.data
 
     // --has 查询模式：输出 "user name pid" 列表（pipe / json / encode-json）
     if (args.has) {

@@ -31,6 +31,8 @@
   一次性回收，无孤儿、无重复实例。
 - **双层日志** —— cdpcd 自身运行日志 + 每个服务的 stdout/stderr 采集日志，均自动按量轮转。
 - **运行时监控** —— 周期采集每个服务的 CPU、内存、网络数据。
+- **sock 控制通道** —— CLI 与 cdpcd 之间走 unix socket 请求-响应（`0600` 属主专用），
+  命令有应答、有时效、失败必报错；通道自身具备自愈能力。
 - **可观测性** —— 配置加载报告、变更类命令审计日志、服务运行时配置查看。
 - **systemd 集成** —— 自动生成 unit，开机自启，受 systemd 托管。
 - **Web 服务**（开发中）—— 内置 web server 组件，用于远程查询与管理。
@@ -38,6 +40,39 @@
 ---
 
 ## 架构与设计
+
+### 控制通道（unix socket）
+
+CLI 与 cdpcd 之间的**唯一控制通道**是 unix socket，协议为 NDJSON
+（一行一请求、一行一应答，按 `id` 配对，可流水线）。
+
+| 身份 | sock 路径 |
+|---|---|
+| root | `/run/cdpcd/cdpcd.sock`，回退 `/usr/local/cdpc/run/cdpcd.sock` |
+| 普通用户 | `$HOME/.cdpc/cdpcd.sock` |
+
+路径推导只有一份实现（`lib/sockpath.js`），daemon 与 CLI 共用。
+
+**隔离模型：每个 daemon 一个 sock，各管自己的服务。**
+socket 文件权限 `0600`、属主即身份，由内核判定访问权：
+
+- 普通用户只能看/控自己的服务，连别人的 sock 会被内核拒绝（`EACCES`）；
+- root 可连接任意用户的 sock，跨用户查询时按 `uauth` 逐个连接后聚合展示；
+- 不存在"只读连接"这回事——unix socket 的 `connect()` 需要写权限，
+  因此没有把查询权限单独放开的可能，除非另开一个 socket（当前不做）。
+
+**失败必须分类报错**，不静默、不误报：
+
+| 情况 | 行为 |
+|---|---|
+| sock 不存在 / 连接被拒 | "daemon 未运行，可尝试 `cdpc service-start`" |
+| 连接超时（300ms） | "cdpcd 无响应，daemon 可能卡死" |
+| `EACCES` / `EPERM` | "无权限连接 \<path\>（权限/属主不符）"，不会误报成未运行 |
+| root 聚合时部分用户不可达 | 逐用户标注该行，其余用户照常展示 |
+
+控制类命令是**受理语义**：CLI 收到 `accepted` 后轮询目标状态确认完成，超时会明确报错。
+`status --runtime` 的 TUI 对每个目标维持一条长连接，daemon 重建 socket 时自动重连，
+界面显示"重连中"而不是清空。
 
 ### 多用户授权模型
 
@@ -201,6 +236,18 @@ logs/audit.log     变更类命令审计日志
 limit/             按用户的资源限制配置
 uauth/             授权用户清单（仅系统级）
 ```
+
+控制通道与运行时状态（不在上述配置目录内）：
+
+```
+root:      /run/cdpcd/cdpcd.sock        控制通道（0600）
+           /run/cdpcd/pids/<name>.pid   detached 服务的 pid（接管恢复用）
+普通用户:  ~/.cdpc/cdpcd.sock
+           ~/.cdpc/pids/<name>.pid
+```
+
+`/run/cdpcd` 由 systemd 的 `RuntimeDirectory=cdpcd` 提供；
+若不可用则回退到安装目录下的 `run/`。
 
 ---
 

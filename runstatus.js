@@ -4,7 +4,7 @@
  * cdpc status --runtime 的 TUI 入口。
  *
  * 输入：
- *   CDPC_RUNTIME_TARGETS 环境变量，行分隔；每行 "<user>\t<loadfile>"
+ *   CDPC_RUNTIME_TARGETS 环境变量，行分隔；每行 "<user>\t<sockFile>"
  *     - user 可为空字符串（不显示 title）
  *
  * 命令行参数：
@@ -14,7 +14,8 @@
  *
  * 行为：
  *   - 非 TTY：回退为一次性快照打印（与 outstatus 多次调用等价）
- *   - TTY：进入备用屏；周期 readLoad，全帧重绘；按键控制滚动 / 详情 / 退出
+ *   - TTY：进入备用屏；周期查询 sock（每目标一条长连接 + 断线指数退避重连，
+ *     不每秒新建连接），全帧重绘；按键控制滚动 / 详情 / 退出
  */
 
 const npargv = require('npargv')
@@ -22,6 +23,7 @@ const npargv = require('npargv')
 const model = require('./lib/status-model')
 const { renderTable, truncateByVisible } = require('./lib/status-render')
 const tty = require('./lib/status-tty')
+const {SockClient, classify, describe} = require('./lib/sockclient')
 
 let arg = npargv({
   '-l': { type: 'boolean', default: false, name: 'list' },
@@ -60,8 +62,8 @@ function parseTargets() {
       if (ind < 0) continue
     }
     let user = line.substring(0, ind).trim()
-    let loadfile = line.substring(ind + 1).trim()
-    if (loadfile) result.push({ user, loadfile })
+    let sock = line.substring(ind + 1).trim()
+    if (sock) result.push({ user, sock })
   }
   return result
 }
@@ -75,12 +77,75 @@ if (targets.length === 0) {
 // ------------------------------------------------------------
 // 一次性扫描：返回扁平化的渲染行序列 + 第一个非空 sys（host-wide 信息，跨 cdpcd 实例一致）
 // ------------------------------------------------------------
+// 每个目标维持一条长连接（daemon re-listen 时自动重连），避免每个刷新周期新建连接
+const conns = new Map()
+
+function connFor(t) {
+  if (conns.has(t.sock)) return conns.get(t.sock)
+
+  let cli = new SockClient(t.sock, {autoReconnect: true})
+  let entry = {cli, err: null, ready: null}
+
+  // 首次连接的结果要能被首帧等到，否则第一帧永远显示"未连接"
+  entry.ready = cli.connect().then(() => true).catch(err => {
+    entry.err = err
+    return false
+  })
+
+  conns.set(t.sock, entry)
+
+  return entry
+}
+
+async function fetchTarget(t) {
+  let e = connFor(t)
+
+  // 只在首帧阻塞等待；后续帧不等（重连由客户端指数退避自己推进）
+  if (e.ready) {
+    await e.ready
+    e.ready = null
+  }
+
+  if (!e.cli.connected) {
+    // 明确显示状态而不是清空该用户的区块。
+    // 曾经连上过 = daemon 在重建 socket，显示"重连中"；
+    // 从未连上 = daemon 根本没跑（或权限不符），要显示真实原因而不是"重连中"。
+    if (e.cli.everConnected) return {ok: false, message: '重连中…'}
+
+    let kind = e.err ? classify(e.err) : 'down'
+    return {ok: false, message: describe(kind, t.sock, e.err)}
+  }
+
+  try {
+    let reply = await e.cli.request('status')
+    if (!reply.ok) return {ok: false, message: reply.error || 'unknown'}
+    return {ok: true, data: reply.data}
+  } catch (err) {
+    return {ok: false, message: err.message}
+  }
+}
+
+/** 关闭所有长连接：socket 句柄会保持事件循环，不关会导致进程不退出 */
+function closeConns() {
+  for (let e of conns.values()) {
+    try { e.cli.close() } catch (err) {}
+  }
+  conns.clear()
+}
+
 async function snapshot(detail) {
   let allLines = []
   let sysSource = null
   for (let t of targets) {
-    let ld = await model.readLoad(t.loadfile).catch(() => null)
-    if (!ld) continue
+    let res = await fetchTarget(t)
+
+    if (!res.ok) {
+      if (allLines.length > 0) allLines.push('')
+      allLines.push(`  ${t.user || 'root'}  (${res.message})`)
+      continue
+    }
+
+    let ld = res.data
     if (!sysSource && ld.sys) sysSource = ld
     let childs = model.filterChilds(ld, applist, t.user)
     if (childs.length === 0) continue
@@ -103,6 +168,7 @@ async function snapshot(detail) {
 async function runSnapshotOnce() {
   let snap = await snapshot(args.list)
   if (snap.lines.length > 0) console.log(snap.lines.join('\n'))
+  closeConns()
 }
 
 // ------------------------------------------------------------
@@ -170,6 +236,7 @@ function runTTY() {
   let onKey = (key) => {
     if (key === 'quit') {
       state.quitting = true
+      closeConns()
       ctrl.cleanup()
       process.exit(0)
     }
@@ -205,7 +272,7 @@ function runTTY() {
     refresh()
   }, periodMs)
 
-  process.on('exit', () => clearInterval(timer))
+  process.on('exit', () => { clearInterval(timer); closeConns() })
 }
 
 ;(async () => {

@@ -1,37 +1,47 @@
 'use strict'
 
 /**
- * cdpc inspect：读取负载信息文件，输出某个服务的完整运行时配置。
- * 用法: inspect.js <loadfile> <appname>
+ * cdpc inspect：输出某个服务的完整运行时配置。
+ * 用法: inspect.js <sockFile> <appname>
  *
- * 数据来源是 cdpc 周期写出的 loadInfoFile（JSON），其中 childs[] 每项
- * 是服务的真实运行时快照——比 config show（磁盘原始 .js）更可信。
+ * 数据来源是 cdpcd 的 sock inspect op，返回库层 _fmtChildInfo() 的白名单浅
+ * 序列化结果（与 status 同一份字段表），是服务的真实运行时快照——
+ * 比 config show（磁盘原始 .js）更可信。
  */
 
-const fs = require('fs')
+const sock = require('./lib/sockclient')
 
-let loadfile = process.argv[2]
+let sockFile = process.argv[2]
 let appname = process.argv[3]
 
-if (!loadfile || !appname) {
-  console.error('用法: inspect.js <loadfile> <appname>')
+if (!sockFile || !appname) {
+  console.error('用法: inspect.js <sockFile> <appname>')
   process.exit(1)
 }
 
-let data
-try {
-  data = JSON.parse(fs.readFileSync(loadfile, {encoding: 'utf8'}))
-} catch (err) {
-  console.error('无法读取负载信息文件：' + err.message)
-  process.exit(1)
-}
+let ch = null
 
-let ch = (data.childs || []).find(c => c.name === appname)
+;(async () => {
+  let r = await sock.query(sockFile, 'inspect', {name: appname})
 
-if (!ch) {
-  console.error(`未找到服务：${appname}`)
-  process.exit(1)
-}
+  if (!r.ok) {
+    if (r.kind === 'reply-error') {
+      let msg = {
+        'not-found': `未找到服务：${appname}`,
+        'invalid-name': `服务名不合法：${appname}`
+      }[r.message] || r.message
+      console.error(msg)
+    } else {
+      console.error(r.message)
+    }
+    process.exit(1)
+  }
+
+  ch = r.data
+  render()
+})()
+
+function render() {
 
 function line(k, v) {
   if (v === undefined || v === null || v === '') v = '-'
@@ -89,4 +99,5 @@ if (ch.limit && typeof ch.limit === 'object') {
       line('limit.' + k, ch.limit[k])
     }
   }
+}
 }

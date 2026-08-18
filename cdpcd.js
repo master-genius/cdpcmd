@@ -60,8 +60,9 @@ function try_mkdir(dname) {
 
 let config_path = `${__dirname}/config`;
 let config_disabled_path = `${config_path}/disabled`;
+// loadInfoFile 已不是任何内部组件的依赖（CLI 走 sock、webserver 走 stdio IPC），
+// 仅作单向导出：daemon 崩溃后的事后取证 + 第三方零依赖集成。
 let loadfile = '/tmp/cdpcd-load.log';
-let event_dir = '/tmp/cdpcd_watch';
 let logfile = `${__dirname}/logs/cdpcd.log`;
 let pidfile = __dirname + '/logs/cdpcd-pid';
 let logdir = __dirname + '/logs';
@@ -89,14 +90,16 @@ if (euid > 0) {
 }
 
 if (euid > 0) {
-  let local_path = `${process.env.HOME}/.cdpc`;
+  // HOME 缺失时（空环境启动）按 euid 查 passwd 兜底：
+  // 配置路径与 sock 路径必须同源，否则会出现"配置在 A、通道在 B"的错位。
+  let user_home = process.env.HOME || require('./lib/sockpath').currentHome();
+  let local_path = `${user_home}/.cdpc`;
 
   config_path = `${local_path}/config`;
   config_disabled_path = `${config_path}/disabled`;
   logdir = `${local_path}/logs`;
   
   loadfile = `${local_path}/cdpcd-load.log`;
-  event_dir = `${local_path}/watch`;
 
   logfile = `${logdir}/cdpcd.log`;
 
@@ -105,10 +108,27 @@ if (euid > 0) {
   try_mkdir(local_path)
   try_mkdir(config_path)
   try_mkdir(config_disabled_path)
-  try_mkdir(event_dir)
   try_mkdir(logdir)
   process.chdir(local_path)
 }
+
+/**
+ * sock 控制通道：唯一的对外管理入口（文件通道已从 cdpc 库整体移除）。
+ * 路径推导统一走 lib/sockpath.js —— daemon 与 CLI 共用同一份逻辑，
+ * 避免本项目既有的"路径常量多份硬编码 → 漂移"问题。
+ */
+const sockpath = require('./lib/sockpath');
+
+let sockfile = sockpath.daemonSock(__dirname, euid, sockpath.currentHome());
+
+if (!sockfile) {
+  console.error('无法建立 sock 控制通道：候选目录都不可用（属主/权限不符或无法创建）。');
+  console.error(`root 候选: ${sockpath.rootCandidates(__dirname).join(' , ')}`);
+  process.exit(1);
+}
+
+// pid 文件（detached 接管恢复用）与 sock 同目录，两者生命周期一致
+let statedir = sockpath.stateDirOf(sockfile);
 
 /**
  * cgroup 子树初始化：
@@ -347,7 +367,8 @@ const cm = new cdpc({
   showColor: true,
   loadInfoType: 'json',
   config: config_path,
-  eventDir: event_dir,
+  sockFile: sockfile,
+  stateDir: statedir,
   debug: args.debug,
   errorHandle: clog.errorLog.bind(clog),
   onLoadConfig: writeConfigErrors,

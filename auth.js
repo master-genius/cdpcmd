@@ -38,7 +38,27 @@ let arg = npargv({
 let args = arg.args
 let userlist = arg.list
 
-let watchPath = '/tmp/cdpcd_watch'
+// 控制通道改为 sock（文件通道已移除）：auth 需要通知 root daemon
+// 加载/移除"用户 daemon"这个受管服务，走 sock 的 load / remove op。
+const sockpath = require('./lib/sockpath')
+const sock = require('./lib/sockclient')
+
+const ROOT_SOCK = sockpath.cliSock(__dirname, 0, '')
+
+// 授权动作是同步流程，这里只发起请求并汇报结果，不阻塞后续用户处理
+function notifyDaemon(op, extra, desc) {
+  sock.query(ROOT_SOCK, op, extra).then(r => {
+    if (r.ok) return
+
+    console.error(`${desc} 失败: ${r.message}`)
+    console.error('（cdpcd 未运行时可稍后执行 cdpc reload 使其生效）')
+
+    // 退出码必须体现失败：uauth 已写入但 daemon 没加载，
+    // 退出码 0 会让脚本化调用误判为完全成功。
+    // 用 exitCode 而非 process.exit，避免截断其他用户的处理。
+    process.exitCode = 1
+  })
+}
 
 try {
   fs.accessSync('./uauth')
@@ -137,7 +157,7 @@ function authUser(uname, cgroup) {
 
         fs.writeFileSync(ucfgpath, ucfg, {encoding: 'utf8'});
 
-        fs.writeFileSync(`${watchPath}/load`, ucfgpath, {encoding: 'utf8'});
+        notifyDaemon('load', {path: ucfgpath}, `通知 cdpcd 加载 ${au.user} 的 daemon 配置`);
   
       } catch (err) {
         console.error(err)
@@ -152,7 +172,7 @@ function authUser(uname, cgroup) {
         // 新旧两种格式的配置文件都尝试清理（文件不存在则忽略）。
         try { fs.unlinkSync(ucfgpath) } catch (e) {}
         try { fs.unlinkSync(oldcfgpath) } catch (e) {}
-        fs.writeFileSync(`${watchPath}/remove/cdpcd-${au.user}`, `${Date.now()}`)
+        notifyDaemon('remove', {name: `cdpcd-${au.user}`}, `通知 cdpcd 移除服务 cdpcd-${au.user}`)
       } catch (err) {
         console.error(err)
         return false
