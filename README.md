@@ -135,7 +135,8 @@ cdpc 5 秒兜底。**worker 会收到两次 SIGTERM**（cdpc 与 launcher 各一
 所以应用的 SIGTERM handler 需要幂等。
 
 几条经过实测的可靠性保证：`stop` 时 **launcher 最后退出**（不留孤儿）；
-`pause` 让服务立即停止响应但**不冻结** worker，手里的请求能处理完；
+`pause` 作用于**整棵子树**（launcher 与全部 worker 一起停），实测暂停期间
+worker 的 CPU 时间不再增长；暂停状态下 `stop` 会先整树 SIGCONT，仍走优雅收尾；
 launcher 若自身崩溃，其 worker 会随 IPC 断开自行退出，cdpc 重启后不会出现重复服务；
 daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后者靠 launcher 的孤儿自检）。
 
