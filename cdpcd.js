@@ -216,9 +216,19 @@ function getDisabledApp() {
   return disabledApp.list
 }
 
-//检测并设定某个用户的应用的内存限制
+/**
+ * 检测并设定某个用户的应用的内存限制。
+ *
+ * 单位：maxrss / rssOffset 是 **KB**（cdpc 侧轮询判定），maxRestart 是次数。
+ * 跟 cgroup 的 memory（字节、内核强制）不是一套机制，别混。
+ *
+ * maxRestart 之前漏在列表外，导致配置文件里写了也不会被采纳 —— 而它是
+ * cdpc 里真正会被读取的限额键（超过次数就转为停止，不再无限重启）。
+ * maxtime / frequency / maxdaylimit 保留在列表里只为兼容老配置，
+ * cdpc 当前并不读取它们。
+ */
 function checkAndSetLimit(chk, limitobj) {
-  let limit_keys = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
+  let limit_keys = ['maxrss', 'rssOffset', 'maxRestart', 'maxtime', 'frequency', 'maxdaylimit']
 
   let common_limit = {}
   for (let k of limit_keys) {
@@ -416,6 +426,22 @@ if (euid === 0) {
   let totalmem = os.totalmem()
   let totalCPU = os.cpus().length
 
+  /**
+   * 这些 create 是异步的且不能在 CJS 顶层 await。失败时（典型是
+   * subtree_control 写入 EBUSY、cgroup v1 系统、权限不足）必须记下来 ——
+   * 否则 groupTable 里没有这个组，后面所有配了 cgroup 的服务都入不了组，
+   * 而现场只能看到一堆 --WARN-CGROUP-ATTACH-- 却不知道根因在这里。
+   *
+   * memory / pids 的单位：memory 是**字节**（cgroup v2 memory.max），
+   * pids 是进程数。cpu 是 [quota, period] 微秒。
+   */
+  const mkgrp = (name, detail) => {
+    Promise.resolve(cm.cgroup.create(name, detail)).catch(err => {
+      args.debug && console.error(`[cgroup] 创建 ${name} 失败: ${err.message}`)
+      clog.errorLog(err, '--ERR-CGROUP-CREATE--')
+    })
+  }
+
   let maxPids = 'max'
   if (totalCPU <= 2) {
     maxPids = 200
@@ -423,14 +449,14 @@ if (euid === 0) {
     maxPids = 128 * (totalCPU - 1)
   }
 
-  cm.cgroup.create('cdpcd-user-auth-limit', {
+  mkgrp('cdpcd-user-auth-limit', {
     cpu: [98600, 100000],
     memory: parseInt(totalmem * 0.85),
     pids: maxPids
   })
   
   //提高CPU占用，但是内存限制比较低
-  cm.cgroup.create('cdpcd-hclm-limit', {
+  mkgrp('cdpcd-hclm-limit', {
     cpu: [98500, 100000],
     memory: parseInt(totalmem * 0.42),
     pids: parseInt(maxPids * 0.42),
@@ -438,46 +464,46 @@ if (euid === 0) {
   })
 
   //为了限制内存占用爆满导致系统崩溃
-  cm.cgroup.create('cdpcd-mem-limit', {
+  mkgrp('cdpcd-mem-limit', {
     cpu: [89000, 100000],
     memory: parseInt(totalmem * 0.36),
     pids: parseInt(maxPids * 0.36),
     cpus: '%80'
   })
 
-  cm.cgroup.create('cdpcd-cpu-limit', {
+  mkgrp('cdpcd-cpu-limit', {
     cpu: [35000, 100000],
     memory: parseInt(totalmem * 0.35),
     pids: parseInt(maxPids * 0.35),
     cpus: '%35'
   })
   
-  cm.cgroup.create('cdpcd-85-limit', {
+  mkgrp('cdpcd-85-limit', {
     cpu: [86500, 100000],
     memory: parseInt(totalmem * 0.72),
     pids: parseInt(maxPids * 0.7)
   })
 
-  cm.cgroup.create('cdpcd-80-limit', {
+  mkgrp('cdpcd-80-limit', {
     cpu: [80000, 100000],
     memory: parseInt(totalmem * 0.65),
     pids: parseInt(maxPids * 0.7)
   })
   
-  cm.cgroup.create('cdpcd-70-limit', {
+  mkgrp('cdpcd-70-limit', {
     cpu: [70000, 100000],
     memory: parseInt(totalmem * 0.55),
     pids: parseInt(maxPids * 0.6)
   })
 
-  cm.cgroup.create('cdpcd-50-limit', {
+  mkgrp('cdpcd-50-limit', {
     cpu: [50000, 100000],
     memory: parseInt(totalmem * 0.4),
     pids: parseInt(maxPids / 2),
     cpus: '%50+'
   })
   
-  cm.cgroup.create('cdpcd-25-limit', {
+  mkgrp('cdpcd-25-limit', {
     cpu: [25000, 100000],
     memory: parseInt(totalmem * 0.25),
     cpus: '%25=',

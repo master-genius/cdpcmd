@@ -143,6 +143,19 @@ daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后�
 注意 `limit.maxrss` 对 cluster 服务无效（它只测 launcher 自身），
 内存限制请用 cgroup。
 
+**两套内存限制的单位不同，别混：**
+
+| 机制 | 单位 | 谁执行 | 超限行为 |
+|---|---|---|---|
+| `limit.maxrss` / `limit.rssOffset` | **KB** | cdpc 轮询判定 | 按 `limit.maxRestart` 重启，超次数后停止 |
+| `cgroup` 的 `memory` | **字节** | **内核** | 直接 OOM kill（进程收 SIGKILL） |
+
+`cdpc status -l` 与 `cdpc inspect` 都会带单位显示。被 OOM kill 的服务在详情里
+可以看到 `exit signal SIGKILL`。
+
+`limit` 里的 `maxtime` / `frequency` / `maxdaylimit` 在当前版本**未实现**，
+写了不报错也不生效；`cdpc inspect` 会标注出来，概览详情不显示它们。
+
 ### 多用户授权模型
 
 cdpcd 同时服务 root 与普通用户：

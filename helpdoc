@@ -182,6 +182,13 @@ cdpc inspect 应用名 同样会输出"进程树"段落。
 注意：资源限制 limit.maxrss 的判定仍按服务自身内存，没有按进程树判定，
 避免包装型服务因子进程内存波动被误杀。配置了 cgroup 的服务由内核按整组限制。
 
+.sp
+单位不要混：limit.maxrss / limit.rssOffset 的单位是 KB，由 cdpc 自己轮询判定
+后重启或停止；cgroup 的 memory 单位是字节，由内核强制执行，超限直接 OOM kill。
+limit.maxRestart 是次数，超过后转为停止不再重启。
+limit 里的 maxtime / frequency / maxdaylimit 在当前版本未实现，写了不生效，
+cdpc inspect 会把它们标注出来。
+
 .SH cluster 模式
 
 .sp
@@ -214,7 +221,7 @@ cluster 服务被 pause 时 launcher 与全部 worker 都会进入停止状态�
 
 .sp
 注意：资源限制 limit.maxrss 对 cluster 服务无效，它只测 launcher 自身的内存。
-cluster 服务的内存限制请使用 cgroup（内核按整个组限制）。
+cluster 服务的内存限制请使用 cgroup（内核按整个组限制，memory 单位为字节）。
 
 .sp
 cluster 目前只支持 nodejs 服务；非 node 程序、node -e 这类没有入口文件的形式

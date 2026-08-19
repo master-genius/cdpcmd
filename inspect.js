@@ -43,9 +43,10 @@ let ch = null
 
 function render() {
 
+// 18 是当前最长的键 limit.maxdaylimit（17 字符）留一格，保证冒号列对齐
 function line(k, v) {
   if (v === undefined || v === null || v === '') v = '-'
-  console.log('  ' + String(k).padEnd(16, ' ') + ': ' + v)
+  console.log('  ' + String(k).padEnd(18, ' ') + ': ' + v)
 }
 
 function section(title) {
@@ -72,7 +73,9 @@ if (ch.cluster) {
   line('cluster', `yes  workers=${ch.workers || '?'}`)
 }
 line('configPath', ch.configPath)
-line('cgroup', ch.cgroup)
+// cgroup 与 limit 是两套机制：cgroup 由内核强制（memory 单位字节），
+// limit 由 cdpc 轮询判定（maxrss 单位 KB）
+line('cgroup', ch.cgroup ? `${ch.cgroup}  (内核强制，memory 单位为字节)` : ch.cgroup)
 
 section('重启策略')
 line('restart', ch.restart)
@@ -120,12 +123,42 @@ if (Array.isArray(ch.procs) && ch.procs.length > 1) {
   }
 }
 
+/**
+ * limit 的单位必须显式标出来，光一个数字看不出是 KB 还是字节 ——
+ * cdpc 里这两套单位是并存的：limit.maxrss 走 cdpc 自己的轮询判定，单位 KB；
+ * cgroup 的 memory 走内核强制执行，单位字节。
+ *
+ * maxtime / frequency / maxdaylimit 在当前 cdpc 里只被规范化，没有任何地方
+ * 读取。inspect 是完整配置转储，所以照实显示，但必须标明未生效 ——
+ * 把无效限额跟有效限额混在一起，比不显示更容易误判。
+ */
+const LIMIT_UNITS = {
+  maxrss:      v => (v <= 1024 ? `${v} KB` : `${(v / 1024).toFixed(2)} MB（${v} KB）`),
+  rssOffset:   v => (v <= 1024 ? `${v} KB` : `${(v / 1024).toFixed(2)} MB（${v} KB）`),
+  maxRestart:  v => `${v} 次`,
+  maxtime:     v => `${v}  (当前版本未实现)`,
+  frequency:   v => `${v}  (当前版本未实现)`,
+  maxdaylimit: v => `${v}  (当前版本未实现)`
+}
+
 if (ch.limit && typeof ch.limit === 'object') {
-  let lk = ['maxrss', 'rssOffset', 'maxtime', 'frequency', 'maxdaylimit']
+  let lk = ['maxrss', 'rssOffset', 'maxRestart', 'maxtime', 'frequency', 'maxdaylimit']
   for (let k of lk) {
     if (ch.limit[k] !== undefined && ch.limit[k] > 0) {
-      line('limit.' + k, ch.limit[k])
+      let f = LIMIT_UNITS[k]
+      line('limit.' + k, f ? f(ch.limit[k]) : ch.limit[k])
     }
   }
+
+  if (ch.limit.rssRestartCount > 0) {
+    line('limit.rssRestartCount', `${ch.limit.rssRestartCount} 次（已因超内存重启的次数）`)
+  }
+}
+
+
+// 退出码与信号：被 cgroup OOM kill / 外部 kill -9 打死时唯一的线索
+if (ch.state === 'EXIT') {
+  if (ch.code !== null && ch.code !== undefined) line('exit.code', ch.code)
+  if (ch.signal) line('exit.signal', ch.signal)
 }
 }
