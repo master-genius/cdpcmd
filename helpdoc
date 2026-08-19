@@ -203,9 +203,14 @@ cdpc 5 秒兜底。worker 会收到两次 SIGTERM（cdpc 与 launcher 各一次�
 所以应用的 SIGTERM 处理需要幂等。
 
 .sp
-pause 与 stop、remove 一样作用于整个服务的进程树：cluster 服务被 pause 时，
-launcher 与全部 worker 都会进入停止状态，不会出现"看着暂停了但还在占 CPU"的情况。
-在暂停状态下执行 stop，cdpc 会先恢复整棵树再发终止信号，优雅收尾不会丢。
+pause 与 stop、remove 一样作用于整个服务的进程树，包括更深层的孙子进程：
+cluster 服务被 pause 时 launcher 与全部 worker 都会进入停止状态；
+用 shell 脚本拉起一组进程的服务同样是整棵树一起停，
+不会出现"看着暂停了但还在占 CPU"的情况。
+
+.sp
+在暂停状态下执行 stop，cdpc 会先恢复整棵树再发终止信号，优雅收尾不会丢；
+执行 remove 则直接强制终止整棵树。重复 pause 或 resume 都没有副作用。
 
 .sp
 注意：资源限制 limit.maxrss 对 cluster 服务无效，它只测 launcher 自身的内存。
