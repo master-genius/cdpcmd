@@ -142,12 +142,12 @@ install_cdpc () {
     done
 
     # web 管理组件已从仓库移除（半成品，后续基于 topbit 重写）：
-    # 清掉旧安装里的目录，并把它作为受管服务从配置中摘除
+    # 清掉旧安装里的目录，以及随之不再使用的依赖
     if [ -d "$CDPC_DIR/webserver" ] ; then
         rm -rf "$CDPC_DIR/webserver"
     fi
 
-    for tb in titbit titbit-loader titbit-token titbit-toolkit ; do
+    for tb in titbit titbit-loader titbit-token titbit-toolkit options-check zipdata ; do
         if [ -d "$CDPC_DIR/node_modules/$tb" ] ; then
             rm -rf "$CDPC_DIR/node_modules/$tb"
         fi
