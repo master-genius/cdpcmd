@@ -143,11 +143,14 @@ daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后�
 注意 `limit.maxrss` 对 cluster 服务无效（它只测 launcher 自身），
 内存限制请用 cgroup。
 
-**cdpc 依赖**：仓库内置（vendored）的是 **cdpc 6.1.1**，`package.json` 的范围声明为
-`^6.0.0`。6.1.1 修掉了一批**静默失效**类问题 —— cgroup 的 `setMem`/`setSwap`/`setCPU`
-写入无效、`cpu` 百分比小于 10% 直接抛错、`cpu: 0` 重建时不清旧配额、加入 cgroup
-失败不出声，以及守护进程信号退出时把包装型服务的后台作业留成 `ppid=1` 孤儿。
-完整清单见 `node_modules/cdpc/README.md` 的「v6.1.1 修复」。
+**cdpc 依赖**：**cdpc 6.1.2**（已发布到 npm），`package.json` 的范围声明为 `^6.1.2`，
+`package-lock.json` 也已锁到该版本；仓库内置（vendored）的副本与发布包**逐文件一致**。
+
+6.1.2 这一批修掉的都是**静默失效**类问题 —— 不报错、看着生效、实际没生效：
+cgroup 的 `setMem` / `setSwap` / `setCPU` 写入无效、`cpu` 百分比小于 10% 直接抛错、
+`cpu: 0` 重建时不清旧配额、加入 cgroup 失败不出声，以及守护进程信号退出时把包装型
+服务的后台作业留成 `ppid=1` 孤儿。另有一处行为变更：`cpu` 不写或写 `0` 都表示不限制。
+完整清单见 `node_modules/cdpc/README.md` 的「v6.1.2」与「v6.1.1 修复」两节。
 
 **分层：限额策略在 cdpcmd，不在库里。** cdpc 作为库，没被要求限制就跟系统默认走
 （6.1.2 起 `cpu` 不写或写 `0` 都是不限制，与 `memory` / `pids` 一致）。为了稳定性
