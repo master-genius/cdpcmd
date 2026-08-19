@@ -189,6 +189,13 @@ limit.maxRestart 是次数，超过后转为停止不再重启。
 limit 里的 maxtime / frequency / maxdaylimit 在当前版本未实现，写了不生效，
 cdpc inspect 会把它们标注出来。
 
+.sp
+cgroup 的 cpu 有两种写法：数字按百分比（1~99 都可用），数组是
+[quota, period] 微秒。内核硬约束：quota >= 1000，period 在 1000~1000000 之间。
+cpu 写 0 表示不限制，与 memory、pids 的 0 语义一致。
+配了 cgroup 但实际没能入组时（非 root、组未创建等）会有
+--WARN-CGROUP-ATTACH-- 告警，并说明该服务当前没有资源限制。
+
 .SH cluster 模式
 
 .sp
