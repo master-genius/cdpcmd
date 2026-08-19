@@ -134,6 +134,11 @@ fork、补员与收尾都在 launcher 内完成。所以 `cdpc status` 里它仍
 cdpc 5 秒兜底。**worker 会收到两次 SIGTERM**（cdpc 与 launcher 各一次），
 所以应用的 SIGTERM handler 需要幂等。
 
+几条经过实测的可靠性保证：`stop` 时 **launcher 最后退出**（不留孤儿）；
+`pause` 让服务立即停止响应但**不冻结** worker，手里的请求能处理完；
+launcher 若自身崩溃，其 worker 会随 IPC 断开自行退出，cdpc 重启后不会出现重复服务；
+daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后者靠 launcher 的孤儿自检）。
+
 注意 `limit.maxrss` 对 cluster 服务无效（它只测 launcher 自身），
 内存限制请用 cgroup。
 
