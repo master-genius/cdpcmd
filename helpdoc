@@ -190,9 +190,16 @@ limit 里的 maxtime / frequency / maxdaylimit 在当前版本未实现，写了
 cdpc inspect 会把它们标注出来。
 
 .sp
-cgroup 的 cpu 有两种写法：数字按百分比（1~99 都可用），数组是
-[quota, period] 微秒。内核硬约束：quota >= 1000，period 在 1000~1000000 之间。
-cpu 写 0 表示不限制，与 memory、pids 的 0 语义一致。
+cgroup 的 cpu 有两种写法：数字按百分比，数组是 [quota, period] 微秒。
+内核硬约束：quota >= 1000，period 在 1000~1000000 之间。
+cpu 写 0 或不写都表示不限制，与 memory、pids 的 0 语义一致。
+
+.sp
+注意 cpu.max 的 quota/period 表示的是"多少个 CPU"，跟机器核数无关
+（systemd 手册：relative to the total CPU time available on one CPU）。
+所以 cpu: 50 是"半个 CPU"而不是"半台机器"。cdpcd 自带的 9 个预设组
+（cdpcd-25-limit 等）已经按核数缩放，组名里的百分比是占全机的意思；
+单核机器上与旧版取值一致。cpuset（cpus 选项）才是"能用哪些核"。
 配了 cgroup 但实际没能入组时（非 root、组未创建等）会有
 --WARN-CGROUP-ATTACH-- 告警，并说明该服务当前没有资源限制。
 

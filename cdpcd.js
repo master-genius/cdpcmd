@@ -461,15 +461,45 @@ if (euid === 0) {
     maxPids = 128 * (totalCPU - 1)
   }
 
+  /**
+   * CPU 配额按核数缩放。
+   *
+   * cgroup v2 的 cpu.max 是 `quota period`，它表示的是**多少个 CPU**，
+   * 跟机器核数无关：
+   *   · 内核文档：the group may consume up to $MAX in each $PERIOD duration
+   *   · systemd CPUQuota= （控制的就是 cpu.max）：the percentage specifies how much
+   *     CPU time the unit shall get at maximum, relative to the total CPU time
+   *     available on **one** CPU；use values > 100% for more than one CPU
+   *   · Docker：--cpus=1.5 等价于 --cpu-quota=150000 --cpu-period=100000
+   *
+   * 所以早先写的 [86500, 100000] 并不是「全机 86.5%」，而是 **0.865 个 CPU** ——
+   * 组名叫 85-limit，在 16 核机器上实际只给到全机 5%；user-auth-limit 写
+   * 98600 本意是「几乎不限」，实际是不到一个核。
+   * 同一段代码里 memory 用 totalmem * 比例、pids 用 128 * (totalCPU - 1)，
+   * 都按机器规模缩放，只有 cpu 漏了乘核数。
+   *
+   * 现在统一用 pctCPU(百分比)：单核机器上结果与旧值一致，多核按比例放大。
+   */
+  const CPU_PERIOD = 100000
+
+  const pctCPU = pct => {
+    // 内核硬下限 quota >= 1000µs；这些预设值不会触碰到，兜一下防止将来改小
+    let quota = Math.max(1000, Math.round(pct / 100 * totalCPU * CPU_PERIOD))
+    return [quota, CPU_PERIOD]
+  }
+
+  args.debug && console.error(`[cgroup] ${totalCPU} 核，预设组 CPU 配额按核数缩放`
+    + `（例：85% → ${pctCPU(85).join(' ')} = ${(pctCPU(85)[0] / CPU_PERIOD).toFixed(2)} 个 CPU）`)
+
   mkgrp('cdpcd-user-auth-limit', {
-    cpu: [98600, 100000],
+    cpu: pctCPU(98.6),
     memory: parseInt(totalmem * 0.85),
     pids: maxPids
   })
   
   //提高CPU占用，但是内存限制比较低
   mkgrp('cdpcd-hclm-limit', {
-    cpu: [98500, 100000],
+    cpu: pctCPU(98.5),
     memory: parseInt(totalmem * 0.42),
     pids: parseInt(maxPids * 0.42),
     cpus: '%90'
@@ -477,46 +507,46 @@ if (euid === 0) {
 
   //为了限制内存占用爆满导致系统崩溃
   mkgrp('cdpcd-mem-limit', {
-    cpu: [89000, 100000],
+    cpu: pctCPU(89),
     memory: parseInt(totalmem * 0.36),
     pids: parseInt(maxPids * 0.36),
     cpus: '%80'
   })
 
   mkgrp('cdpcd-cpu-limit', {
-    cpu: [35000, 100000],
+    cpu: pctCPU(35),
     memory: parseInt(totalmem * 0.35),
     pids: parseInt(maxPids * 0.35),
     cpus: '%35'
   })
   
   mkgrp('cdpcd-85-limit', {
-    cpu: [86500, 100000],
+    cpu: pctCPU(86.5),
     memory: parseInt(totalmem * 0.72),
     pids: parseInt(maxPids * 0.7)
   })
 
   mkgrp('cdpcd-80-limit', {
-    cpu: [80000, 100000],
+    cpu: pctCPU(80),
     memory: parseInt(totalmem * 0.65),
     pids: parseInt(maxPids * 0.7)
   })
   
   mkgrp('cdpcd-70-limit', {
-    cpu: [70000, 100000],
+    cpu: pctCPU(70),
     memory: parseInt(totalmem * 0.55),
     pids: parseInt(maxPids * 0.6)
   })
 
   mkgrp('cdpcd-50-limit', {
-    cpu: [50000, 100000],
+    cpu: pctCPU(50),
     memory: parseInt(totalmem * 0.4),
     pids: parseInt(maxPids / 2),
     cpus: '%50+'
   })
   
   mkgrp('cdpcd-25-limit', {
-    cpu: [25000, 100000],
+    cpu: pctCPU(25),
     memory: parseInt(totalmem * 0.25),
     cpus: '%25=',
     pids: 25

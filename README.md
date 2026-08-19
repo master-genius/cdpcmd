@@ -150,11 +150,35 @@ daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后�
 完整清单见 `node_modules/cdpc/README.md` 的「v6.1.1 修复」。
 
 **分层：限额策略在 cdpcmd，不在库里。** cdpc 作为库，没被要求限制就跟系统默认走
-（6.1.1 起 `cpu` 不写或写 `0` 都是不限制，与 `memory` / `pids` 一致）。为了稳定性
+（6.1.2 起 `cpu` 不写或写 `0` 都是不限制，与 `memory` / `pids` 一致）。为了稳定性
 做兜底收敛是 cdpcd 的职责 —— 它在启动时建好 9 个预设组
 （`cdpcd-25-limit` / `cdpcd-50-limit` / … / `cdpcd-user-auth-limit`），
 每个都**显式**写了 `cpu` / `memory` / `pids`，服务在配置里用 `cgroup: '组名'` 挂进去。
 这样"库的行为可预测"和"平台有安全下限"两件事各归各位，不会互相干扰。
+
+### 预设组的 CPU 配额按核数缩放
+
+`cgroup.memory`、`cgroup.pids` 的单位是绝对量（字节、个数），而 `cpu.max` 的
+`quota / period` 表示的是**多少个 CPU**，跟机器核数无关 —— 内核文档写的是
+"the group may consume up to $MAX in each $PERIOD duration"，systemd 的
+`CPUQuota=`（控制的就是 `cpu.max`）更直白："relative to the total CPU time
+available on **one** CPU，use values > 100% for more than one CPU"，Docker 的
+`--cpus=1.5` 也正是 `--cpu-quota=150000 --cpu-period=100000`。
+
+所以要表达「占全机 X%」必须乘核数。组名里的百分比现在是**占全机**的意思：
+
+| 组名 | 意图 | 1 核 | 2 核 | 16 核 |
+|---|---|---|---|---|
+| `cdpcd-user-auth-limit` | 99% | 0.99 个 CPU | 1.97 个 CPU | 15.78 个 CPU |
+| `cdpcd-85-limit` | 86.5% | 0.86 | 1.73 | 13.84 |
+| `cdpcd-50-limit` | 50% | 0.50 | 1.00 | 8.00 |
+| `cdpcd-25-limit` | 25% | 0.25 | 0.50 | 4.00 |
+
+**单核机器上与旧值逐字节一致**，所以这次调整对单核部署没有任何影响；多核机器上
+旧值实际只给到不到一个核（16 核上 `85-limit` 只有全机 5%），现在才符合组名的本意。
+
+端到端实测（2 核机器，`cdpcd-25-limit` = 0.50 个 CPU）：两个忙进程 6 秒里共拿到
+0.51 个 CPU、累计被限流 2.9 秒 —— 限额真实生效。
 
 **两套内存限制的单位不同，别混：**
 
