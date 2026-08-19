@@ -31,6 +31,8 @@
   一次性回收，无孤儿、无重复实例。
 - **双层日志** —— cdpcd 自身运行日志 + 每个服务的 stdout/stderr 采集日志，均自动按量轮转。
 - **运行时监控** —— 周期采集每个服务的 CPU、内存、网络数据。
+- **cluster 模式** —— nodejs 服务配 `cluster: true` / `workers: N` 即可多 worker
+  共享端口，应用零改动；worker 异常终止自动补员，停机分层强制终止不留孤儿。
 - **进程树负载** —— 除自身占用外，按进程树聚合出合计与逐进程明细。
   包装脚本、master/worker、cluster 主进程这类服务自身接近 0 负载，
   只有看树才定位得到问题。
@@ -102,6 +104,38 @@ socket 文件权限 `0600`、属主即身份，由内核判定访问权：
 子进程很多时（如 60+ 个 worker），明细只列 CPU 最高的几个，其余折叠为
 "其他 N 个进程"并给出合计；`TREE` 列的进程数与 cpu/mem 合计始终覆盖**全部**
 子进程，不受明细条数限制。
+
+### cluster 模式
+
+nodejs 服务加两行配置即可多 worker 共享端口，**应用不用改代码**：
+
+```js
+module.exports = {
+  name: 'web', file: '/opt/app/server.js', args: ['--port', '8080'],
+  cluster: true, workers: 4
+}
+```
+
+cdpc 自身不做 cluster 管理：它只多管一个 `launcher.js` 进程，N 个 worker 的
+fork、补员与收尾都在 launcher 内完成。所以 `cdpc status` 里它仍是**一个服务**，
+`TREE` 列显示 launcher + workers 的合计（`×5`），`status -l` 展开到每个 worker：
+
+```
+│ web              │ RUNNING    │ 3025810 │ 0.00%  │ 44.42M  │ 220.15%/180.40M ×5   │
+│    exec   node /usr/local/cdpc/node_modules/cdpc/launcher.js --workers 4 …
+│    tree   5 procs   CPU 220.15%   MEM 180.40M   (self 0.30% / 44.42M)
+│    ├─ 3025819   72.10%    45.03M  node /opt/app/server.js
+```
+
+`exec` 行显示实际执行的命令（cluster 服务真正跑的是 launcher），
+`cmd`/`args` 仍是用户配置的原值。
+
+停机是分层的：worker 优雅收尾 → launcher 3 秒后 SIGKILL 强制终止残余 →
+cdpc 5 秒兜底。**worker 会收到两次 SIGTERM**（cdpc 与 launcher 各一次），
+所以应用的 SIGTERM handler 需要幂等。
+
+注意 `limit.maxrss` 对 cluster 服务无效（它只测 launcher 自身），
+内存限制请用 cgroup。
 
 ### 多用户授权模型
 

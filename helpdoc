@@ -181,3 +181,31 @@ cdpc inspect 应用名 同样会输出"进程树"段落。
 .sp
 注意：资源限制 limit.maxrss 的判定仍按服务自身内存，没有按进程树判定，
 避免包装型服务因子进程内存波动被误杀。配置了 cgroup 的服务由内核按整组限制。
+
+.SH cluster 模式
+
+.sp
+nodejs 服务在配置里加 cluster: true 与 workers: N，即可启动 N 个 worker
+共享同一端口，应用不需要改代码。workers 写 0 表示按 CPU 核数，上限 64。
+
+.sp
+cdpc 自身不做 cluster 管理：它只多管一个 launcher 进程，N 个 worker 的
+fork、补员与收尾都在 launcher 内完成。所以在 status 里它仍然是一个服务，
+TREE 列显示 launcher 与 worker 的合计，status -l 可展开到每个 worker。
+
+.sp
+worker 异常终止会被自动补员；worker 起来就崩时会触发熔断，
+launcher 退出并交由 cdpc 按 restart 策略整组重启。
+
+.sp
+停机是分层的：worker 先优雅收尾，launcher 3 秒后对未退出的 worker 强制终止，
+cdpc 5 秒兜底。worker 会收到两次 SIGTERM（cdpc 与 launcher 各一次），
+所以应用的 SIGTERM 处理需要幂等。
+
+.sp
+注意：资源限制 limit.maxrss 对 cluster 服务无效，它只测 launcher 自身的内存。
+cluster 服务的内存限制请使用 cgroup（内核按整个组限制）。
+
+.sp
+cluster 目前只支持 nodejs 服务；非 node 程序、node -e 这类没有入口文件的形式
+会被拒绝加载，原因写入配置加载报告（cdpc config errors 可查看）。

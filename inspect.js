@@ -61,6 +61,16 @@ line('pid', ch.pid > 0 ? ch.pid : '-')
 line('detail', ch.detail)
 line('command', ch.command)
 line('args', Array.isArray(ch.args) ? ch.args.join(' ') : '-')
+
+// 实际执行的命令：cluster 服务真正跑的是 launcher，
+// 而 command/args 保持用户配置的原值
+if (ch.real_command || (Array.isArray(ch.real_args) && ch.real_args.length > 0)) {
+  line('exec', `${ch.real_command || ch.command} ${(ch.real_args || ch.args || []).join(' ')}`)
+}
+
+if (ch.cluster) {
+  line('cluster', `yes  workers=${ch.workers || '?'}`)
+}
 line('configPath', ch.configPath)
 line('cgroup', ch.cgroup)
 
