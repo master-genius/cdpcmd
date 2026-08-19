@@ -25,7 +25,7 @@ SYSTEMD_FILE=cdpcd.service
 
 SYSTEMD_PATH=/lib/systemd/system
 
-INSTALL_LIST="cdpcd.js cdpc install.sh webserver node_modules package.json package-lock.json auth.js helpdoc outstatus.js runstatus.js lib config init-start.js combine-status-result.js parseNameApp.js disable-or-enable.js inspect.js sockop.js socketpath.js makesystemd.js mktk.js"
+INSTALL_LIST="cdpcd.js cdpc install.sh node_modules package.json package-lock.json auth.js helpdoc outstatus.js runstatus.js lib config init-start.js combine-status-result.js parseNameApp.js disable-or-enable.js inspect.js sockop.js socketpath.js makesystemd.js"
 
 # 清理旧版文件通道残留：新版不再读写它们，留着会让 CLI 把"daemon 没跑"
 # 误判成"升级后尚未重启"（CLI 用这个目录作为半升级状态的线索）。
@@ -135,9 +135,21 @@ install_cdpc () {
 
     # cp -R 只覆盖不删除：清理已从项目移除的旧脚本，
     # 否则它们会永久残留在安装目录里（文件通道时代的三个脚本）
-    for stale in mapnametocmd.js noticeApp.js get_app_state.js ; do
+    for stale in mapnametocmd.js noticeApp.js get_app_state.js mktk.js lib/apitk.js ; do
         if [ -f "$CDPC_DIR/$stale" ] ; then
             rm -f "$CDPC_DIR/$stale"
+        fi
+    done
+
+    # web 管理组件已从仓库移除（半成品，后续基于 topbit 重写）：
+    # 清掉旧安装里的目录，并把它作为受管服务从配置中摘除
+    if [ -d "$CDPC_DIR/webserver" ] ; then
+        rm -rf "$CDPC_DIR/webserver"
+    fi
+
+    for tb in titbit titbit-loader titbit-token titbit-toolkit ; do
+        if [ -d "$CDPC_DIR/node_modules/$tb" ] ; then
+            rm -rf "$CDPC_DIR/node_modules/$tb"
         fi
     done
 
@@ -151,26 +163,6 @@ install_cdpc () {
 
     if [ ! -d "$CDPC_DIR/logs" ] ; then
         mkdir "$CDPC_DIR/logs"
-    fi
-
-    if [ ! -d "$CDPC_DIR/webserver/config" ] ; then
-        mkdir "$CDPC_DIR/webserver/config"
-    fi
-
-    if [ ! -f "$CDPC_DIR/webserver/config/apitk" ] ; then
-        node ./mktk.js > tmp/apitk
-        mv tmp/apitk "$CDPC_DIR/webserver/config/"
-        chmod 640 "$CDPC_DIR/webserver/config/apitk"
-    fi
-
-    WEB_SERVER_CERT_PATH="$CDPC_DIR/webserver/config/cert"
-
-    if [ ! -d "$WEB_SERVER_CERT_PATH" ] ; then
-        mkdir $WEB_SERVER_CERT_PATH
-    fi
-
-    if [ -d "$SELFDIR/config/cert" ] ; then
-        cp -R "$SELFDIR/config/cert/*" "$WEB_SERVER_CERT_PATH/"
     fi
 
     if [ ! -x cdpc ] ; then

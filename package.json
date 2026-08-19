@@ -4,10 +4,6 @@
     "gohttp": "^6.1.0",
     "npargv": "^2.0.3",
     "options-check": "^1.0.1",
-    "titbit": "^25.2.0",
-    "titbit-loader": "^22.6.10",
-    "titbit-token": "^2.2.0",
-    "titbit-toolkit": "^4.1.2",
     "zipdata": "^1.0.2"
   }
 }

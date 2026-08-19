@@ -14,7 +14,6 @@ const cdpclog = require('./lib/cdpclog.js');
 const {getUserTable} = require('./lib/getuser.js');
 const fs = require('fs');
 
-const fsp = fs.promises
 
 let arg = npargv({
   '--debug': {
@@ -60,7 +59,7 @@ function try_mkdir(dname) {
 
 let config_path = `${__dirname}/config`;
 let config_disabled_path = `${config_path}/disabled`;
-// loadInfoFile 已不是任何内部组件的依赖（CLI 走 sock、webserver 走 stdio IPC），
+// loadInfoFile 已不是任何内部组件的依赖（CLI 走 sock），
 // 仅作单向导出：daemon 崩溃后的事后取证 + 第三方零依赖集成。
 let loadfile = '/tmp/cdpcd-load.log';
 let logfile = `${__dirname}/logs/cdpcd.log`;
@@ -497,106 +496,6 @@ cm.dynamicStep = 2
 cm.setStepSlice(100)
 cm.setMaxStep(10, 28)
 
-function addChildApp(msg, cm) {
-  if (msg.config) {
-    if (Array.isArray(msg.config))
-        cm.runChilds(msg.config);
-    else
-        cm.runChilds([ msg.config ]);
-  }
-}
-
-function postLog(msg, cm) {
-  clog.log(msg)
-}
-
-async function set_disabled_state(op, name) {
-  let dfile = config_disabled_path + '/' + name
-
-  if (op === 'disable' || op === 'disabled') {
-    await fsp.access(dfile)
-            .catch(err => {
-              fsp.writeFile(dfile, (new Date).toLocaleString(), {encoding: 'utf8'})
-                  .catch(err => {
-                    err && clog.log({
-                      type: 'error',
-                      ...err,
-                      errname: '--ERR-DISABLED-APP--'
-                    })
-                  })
-            })
-  } else {
-    await fsp.access(dfile)
-            .then(async () => {
-              await fsp.unlink(dfile)
-                        .catch(err => {
-                          return fsp.unlink(dfile)
-                        })
-                        .catch(err => {
-                          err && clog.log({
-                            type: 'error',
-                            ...err,
-                            errname: '--ERR-ENABLE-APP--'
-                          })
-                        })
-            })
-            .catch(err => {})
-  }
-}
-
-function webServerMessage(ch) {
-  ch.on('message', (msg, handle) => {
-    if (msg.op) {
-        switch (msg.op) {
-          case 'disable':
-          case 'enable':
-            set_disabled_state(msg.op, msg.name);
-  
-          case 'restart':
-          case 'start':
-          case 'pause':
-          case 'stop':
-          case 'resume':
-          case 'remove':
-            msg.name && cm[msg.op](msg.name);
-            break;
-  
-          //提交日志
-          case 'log':
-            postLog(msg, cm);
-            break;
-  
-          case 'add':
-            addChildApp(msg, cm);
-            break;
-  
-          case 'saveRemove':
-            msg.name && cm.safeRemove(msg.name);
-            break;
-  
-          case 'remove':
-            msg.name && cm.remove(msg.name);
-            break;
-        }
-    }
-  });
-}
-
-let webServer = {
-  name: 'cdpcd-web-server',
-  file: __dirname + '/webserver/app.js',
-  restart: 'always',
-  restartDelay: 1000,
-  monitor: true,
-  lockReload: true,
-  monitorNetData: true,
-  cgroup: 'cdpcd-50-limit',
-  options: {
-    stdio: ['ignore', 'ignore', 'ignore', 'ipc']
-  },
-  callback: webServerMessage
-}
-
 process.on('exit', code => {
   try {
     fs.unlinkSync(loadfile)
@@ -631,8 +530,8 @@ if (args.debug) {
 }
 
 if (euid === 0) {
+  // 延迟一小段再加载：等 cgroup 子树初始化完成
   setTimeout(() => {
-    cm.runChilds([webServer])
     cm.loadConfig()
     cm.monitorStart()
   }, 235)

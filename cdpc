@@ -70,9 +70,7 @@ if [ ! -d "$CDPC_DISABLED_DIR" ] ; then
     mkdir -p $CDPC_DISABLED_DIR
 fi
 
-CDPC_SERVER="$CDPC_DIR/webserver"
 
-CDPC_SERVER_APP="$CDPC_SERVER/app.js"
 
 ARGS=''
 
@@ -297,31 +295,6 @@ handle_app() {
     node $CDPC_INS_DIR/sockop.js $1 $HAS_RESULT
 }
 
-handle_webserver() {
-    case $1 in
-        start)
-            ;;
-
-        stop)
-            ;;
-
-        restart)
-            ;;
-
-        pause)
-            ;;
-        
-        resume)
-            ;;
-        *)
-            echo "$1 : unknow command"
-            return 1
-            ;;
-    esac
-
-    node $CDPC_INS_DIR/sockop.js $1 cdpcd-web-server
-}
-
 handle_auth() {
     case $1 in
         add)
@@ -375,7 +348,7 @@ write_audit() {
 }
 
 case $1 in
-    start|stop|restart|pause|resume|remove|safe-remove|disable|enable|reload|load|config|auth|webserver|service-start|service-stop|service-restart)
+    start|stop|restart|pause|resume|remove|safe-remove|disable|enable|reload|load|config|auth|service-start|service-stop|service-restart)
         write_audit "$@"
         ;;
 esac
@@ -636,17 +609,6 @@ case $1 in
         fi
         ;;
     
-    #start stop restart
-    webserver)
-        check_args2_exit $# 2
-        if [ "$UID" -gt 0 ] ; then
-            echo "deny!!"
-            exit 1
-        fi
-
-        handle_webserver $2
-        ;;
-
     config)
         # 无参子命令：show / errors / list
         if [[ $# -gt 1 ]] ; then
