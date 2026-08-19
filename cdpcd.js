@@ -251,10 +251,22 @@ function checkAndSetLimit(chk, limitobj) {
 
   if (Object.keys(lm).length <= 0) return false;
 
+  /**
+   * 取更严格的那个（数值更小者胜出）。
+   *
+   * 但 maxrss 与 maxRestart 的 0 是「不限制」的哨兵值，不是「最严」——
+   * 按数值比较的话，通用限额里写个 0 会把某个服务原本 maxrss 60000 的限制
+   * 直接放开，方向正好反了。这两个键的 0 一律当作「未设置」跳过。
+   * rssOffset 的 0 是真正的最严（不留宽容量），照常参与比较。
+   */
+  const UNLIMITED_ZERO = ['maxrss', 'maxRestart']
+
   for (let x of limit_keys) {
     !chk.limit && (chk.limit = {});
 
     if ( (lm[x] !== undefined) && (typeof lm[x] === 'number') && !isNaN(lm[x]) ) {
+      if (lm[x] === 0 && UNLIMITED_ZERO.indexOf(x) >= 0) continue;
+
       ;((chk.limit[x] === undefined) || (chk.limit[x] > lm[x]))
         &&
       (chk.limit[x] = lm[x]);
