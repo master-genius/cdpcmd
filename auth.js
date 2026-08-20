@@ -108,11 +108,6 @@ function authUser(uname, cgroup) {
   // 旧格式（升级前为 config/<用户名>.js），迁移时清理，避免与新文件同 name 冲突。
   let oldcfgpath = `${__dirname}/config/${au.user}.js`;
   
-  let env_path = [
-    `${au.home}/bin`, '/usr/local/sbin', '/usr/local/bin',
-    '/usr/sbin', '/usr/bin', '/sbin', '/bin'
-  ]
-
   switch (op) {
   
     case 'add':
@@ -135,13 +130,10 @@ function authUser(uname, cgroup) {
           options: {
             uid: uid,
             gid: gid,
-            env : {
-              SHELL: '${process.env.SHELL}',
-              USER: '${au.user}',
-              PATH: '${env_path.join(':')}',
-              HOME:'${au.home}',
-              LANG: '${process.env.LANG}',
-            },
+            // env 在 load 时现算，不在 auth 时快照：
+            // 管理员改了系统 locale / /etc/environment，重新 load 即生效，
+            // 不必为每个用户重跑 cdpc auth。同时这里没有任何值参与代码生成。
+            env : require('../lib/baseenv.js').build(uid),
             stdio: ['ignore', 'ignore', 'ignore', 'ipc']
           },
           monitor: true,

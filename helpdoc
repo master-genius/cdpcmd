@@ -34,6 +34,40 @@ sudo cdpc auth add xx
 
 sudo cdpc auth remove xx
 
+.SH 环境变量
+
+用户cdpcd以整体替换的方式设置环境变量（不继承root的环境），分为两层。
+
+.sp
+基线层由root侧构建，只读root可信来源，且在配置加载时现算：
+HOME/USER/LOGNAME/SHELL取自/etc/passwd；
+PATH为 ~/.local/bin:~/bin: 加上/etc/environment中的PATH；
+LANG与LC_*取自/etc/default/locale、/etc/locale.conf或/etc/sysconfig/i18n，
+经locale -a校验，取不到时回落C.UTF-8。
+管理员修改上述系统文件后执行cdpc reload即生效，无需重跑cdpc auth。
+从旧版本升级时，已授权用户需重跑一次sudo cdpc auth add <用户>。
+
+.sp
+用户层为主目录下的 .cdpcd_env 文件，存在则由用户自己的cdpcd在启动时加载，
+root不读该文件。它会被该用户全部被托管服务继承，修改后重启自身daemon即生效，
+加载结果记录在 ~/.cdpc/logs/cdpcd.log 的USER-ENV条目中。
+
+.sp
+文件为.env风格，支持export前缀，支持$VAR与${VAR}展开；单引号内为纯字面量、不展开；
+双引号内可用反斜杠转义美元符号、双引号、反斜杠与反引号。
+不支持命令替换：值中出现$( )或反引号会跳过该行并告警。
+单行出错只跳过该行，不会中止整个文件。
+HOME、USER、LOGNAME、NODE_OPTIONS不允许覆盖；PATH会自动丢弃空分量与重复分量
+（空分量在POSIX下等价于当前工作目录）。
+文件上限64KB、512个键，建议chmod 600。
+
+.sp
+示例：
+
+export PATH="$PATH:/opt/mytool/bin"
+
+JAVA_HOME="${HOME}/sdk/jdk21"
+
 .SH 子命令
 
 对于restart、start、stop、pause、resume、remove操作，都是以下操作方式：

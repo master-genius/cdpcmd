@@ -207,6 +207,54 @@ cdpcd 同时服务 root 与普通用户：
 root 通过 `cdpc auth add <用户>` 授权；被授权用户即可用 `cdpc` 托管自己的进程，
 但只能以自身身份运行、只能看到和管理自己的服务。
 
+### 用户 daemon 的环境变量
+
+用户 cdpcd 以 `options.env` **整体替换**的方式启动（不继承 root 的环境），
+其环境变量分两层：
+
+**基线层（root 侧，`lib/baseenv.js`）** —— 在配置 load 时现算，只读 root 可信来源：
+
+| 变量 | 来源 |
+| --- | --- |
+| `HOME` / `USER` / `LOGNAME` / `SHELL` | `/etc/passwd`（最高优先级，不可被覆盖） |
+| `PATH` | `~/.local/bin:~/bin:` + `/etc/environment` 的 PATH（缺失则用内置默认值） |
+| `LANG` / `LC_*` / `LANGUAGE` | `/etc/default/locale`、`/etc/locale.conf`、`/etc/sysconfig/i18n`（取第一个有内容的），用 `locale -a` 校验后写入；都取不到时回落 `C.UTF-8` |
+| 其余 | `/etc/environment` |
+
+`LC_ALL` 不会被合成（它会压过所有分类，导致下游无法按分类调整）；
+`TZ` 与 `XDG_RUNTIME_DIR` 有意不设 —— 前者不设时 glibc 自己读 `/etc/localtime`，
+后者在没有 logind 会话时指向不存在的目录，比不设更糟。
+
+因为是 load 时求值，管理员改了系统 locale 或 `/etc/environment` 后
+执行 `cdpc reload` 即生效，**不需要为每个用户重跑 `cdpc auth`**。
+
+> 升级注意：旧版本把环境变量硬编码进了 `config/user@<用户>.js`。
+> 已授权的用户需要重跑一次 `sudo cdpc auth add <用户>` 才能用上新的基线层。
+
+**用户层（`~/.cdpcd_env`）** —— 存在则由用户自己的 cdpcd 在启动时加载，
+root 全程不读这个文件。加载结果会写入 `~/.cdpc/logs/cdpcd.log`（`USER-ENV` 标记）。
+它合入 `process.env`，因此该用户**所有被托管服务都会继承**；改完重启自己的 daemon 即生效。
+
+格式是 `.env` 风格，语义贴近 shell 但刻意受限：
+
+```sh
+# 支持 export 前缀与变量展开
+export PATH="$PATH:/opt/mytool/bin"
+JAVA_HOME="${HOME}/sdk/jdk21"
+
+LITERAL='这里的 $PATH 不展开'   # 单引号 = 纯字面量
+ESCAPED="价格 \$100"            # 反斜杠可转义 \$ " \ \`
+```
+
+- 展开 `$VAR` / `${VAR}`，查找范围是「基线环境 + 本文件中先前定义的键」，未定义展开为空串
+- **不支持命令替换**：值里出现 `$(...)` 或反引号会跳过该行并告警（这里不是 shell）
+- 单行出错只跳过该行，不会中止整个文件
+- `HOME` / `USER` / `LOGNAME` / `NODE_OPTIONS` 不允许覆盖（前三个是 `~/.cdpc` 的定位基准，
+  改了会造成"配置在 A、通道在 B"；`NODE_OPTIONS` 可给 daemon 注入 `--require`）
+- `PATH` 会被规范化：**丢弃空分量**（POSIX 下空分量等价于当前工作目录，是实打实的隐患，
+  而 `PATH` 未定义时 `export PATH="$PATH:/opt/bin"` 正好产出这种值）与重复分量
+- 上限 64 KB / 512 个键；文件对同组或其他用户可写时会告警（建议 `chmod 600`）
+
 ### 配置式服务管理
 
 服务由配置文件描述（`.js` / `.json`），放入配置目录即被加载。`name` 是服务的**唯一身份**：
@@ -360,6 +408,7 @@ root:      /run/cdpcd/cdpcd.sock        控制通道（0600）
            /run/cdpcd/pids/<name>.pid   detached 服务的 pid（接管恢复用）
 普通用户:  ~/.cdpc/cdpcd.sock
            ~/.cdpc/pids/<name>.pid
+           ~/.cdpcd_env                 用户自定义环境变量（可选）
 ```
 
 `/run/cdpcd` 由 systemd 的 `RuntimeDirectory=cdpcd` 提供；

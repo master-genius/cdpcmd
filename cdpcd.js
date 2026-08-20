@@ -68,6 +68,9 @@ let logdir = __dirname + '/logs';
 
 let euid = process.geteuid();
 
+// ~/.cdpcd_env 的加载结果，待日志组件就绪后再输出（见下方 flush）
+let userEnvResult = null;
+
 let {idtable, nametable} = getUserTable()
 let username = 'root'
 
@@ -109,6 +112,23 @@ if (euid > 0) {
   try_mkdir(config_disabled_path)
   try_mkdir(logdir)
   process.chdir(local_path)
+
+  /**
+   * 用户自定义环境变量：~/.cdpcd_env
+   *
+   * 由**用户自己身份的进程**加载（此处 euid 就是该用户），root 全程不碰这个
+   * 文件——读文件的进程本身就是文件属主，不存在权限跨越，也就不需要
+   * O_NOFOLLOW / 属主校验之类的跨权限防护。
+   *
+   * 注意：保护 ~/.cdpc 路径一致性的是 envfile 的 FORBIDDEN_KEYS（禁止覆盖
+   * HOME/USER/LOGNAME），**不是**这里的调用顺序——sockfile 的推导在本块之后，
+   * 顺序本身挡不住任何东西。要放宽那份禁止清单前先想清楚这一点。
+   *
+   * 改动 process.env 之后，cdpc 的 cfg.env 是"以 process.env 为底叠加"的语义，
+   * 未显式配 env 的服务也直接继承，因此用户不必逐个服务配置。
+   * 用户改完文件重启自己的 daemon 即生效，无需 root 重跑 cdpc auth。
+   */
+  userEnvResult = require('./lib/envfile.js').loadUserEnv(`${user_home}/.cdpcd_env`)
 }
 
 /**
@@ -191,6 +211,25 @@ const clog = new cdpclog(logfile);
 clog.init().catch(err => {
   fs.writeFile('/tmp/cdpcd-temp.log', err.message, err => {});
 });
+
+/**
+ * ~/.cdpcd_env 的加载结果落日志：生效了哪些键、忽略了什么以及原因。
+ * 环境变量会被继承到该用户全部被托管服务，没有这行记录排障只能靠猜。
+ */
+if (userEnvResult) {
+  if (userEnvResult.loaded) {
+    clog.log({
+      type: 'log',
+      logname: 'USER-ENV',
+      message: `~/.cdpcd_env 已加载：生效 ${userEnvResult.applied.length} 项`,
+      other: userEnvResult.applied.join(',') || '-'
+    });
+  }
+
+  for (let w of userEnvResult.warnings) {
+    clog.log({type: 'log', logname: 'USER-ENV', message: w, other: 'warn'});
+  }
+}
 
 let disabledApp = {
   time: 0,
