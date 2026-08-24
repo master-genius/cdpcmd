@@ -36,13 +36,18 @@
 配置一个都不会被加载**。现场只有一条 `--ERR-LOAD-CONFIG--`，而加载报告里是个
 看着人畜无害的 `loaded: 0`。
 
-两处改动：
+同一类问题有两个入口，都堵上了：
 
 · `startChild`：spawn 前挡住空 command，按已有的 CMDLINE-CHECK 早退套路置
   `state=ERROR` + `cause=NO-COMMAND|START|...` 后返回，服务在 status / inspect
   里看得见也说得出原因。
-· `runChilds`：`tryMakeChild` 包 try/catch，异常并入 `failures`，与 checkConfig
-  失败走同一条上报链路（`failures` → `skipped` → `onLoadConfig`）。
+· `_normalizeWrap`：`cluster: true` 却没写 command 时，原先直接对 `undefined`
+  取 `.indexOf` —— 抛在 `checkConfig` 里，比抛在 spawn 里更隐蔽。改为返回
+  false 并给出可读的 `lastErrorInfo`。
+· `runChilds`：每个配置的**整段处理**（含 `checkConfig`）包 try/catch，
+  异常并入 `failures`，与 checkConfig 返回 false 走同一条上报链路
+  （`failures` → `skipped` → `onLoadConfig`）。try 必须把 `checkConfig` 也包住，
+  只护住 `tryMakeChild` 等于没护——上面那个 cluster 的坑就抛在 checkConfig 里。
   捕获后**不**清理可能已登记的 chk：status 里看得见一个 ERROR 的服务，
   远好过它凭空消失。
 
