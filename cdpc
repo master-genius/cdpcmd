@@ -137,9 +137,23 @@ handle_config () {
                 exit 1
             fi
 
+            if ! precheck_config_file "$2" ; then
+                exit 1
+            fi
+
             CFG_BASENAME=$(basename "$2")
             cp "$2" "$CDPC_CONFIG/"
-            node $CDPC_INS_DIR/sockop.js load --path "$CDPC_CONFIG/$CFG_BASENAME"
+
+            CFG_REPORT_BEFORE=`report_mtime`
+            if ! node $CDPC_INS_DIR/sockop.js load --path "$CDPC_CONFIG/$CFG_BASENAME" ; then
+                exit 1
+            fi
+
+            if ! wait_config_report "$CFG_REPORT_BEFORE" "$CDPC_CONFIG/$CFG_BASENAME" ; then
+                echo ""
+                echo "该配置已被 cdpcd 拒绝，服务未加载（文件仍在 $CDPC_CONFIG/$CFG_BASENAME，改好后 cdpc reload）。"
+                exit 1
+            fi
             ;;
 
         remove)
@@ -316,15 +330,156 @@ handle_auth() {
 }
 
 load_config() {
-    node $CDPC_INS_DIR/sockop.js load --path "$1"
+    CFG_REPORT_BEFORE=`report_mtime`
+    node $CDPC_INS_DIR/sockop.js load --path "$1" || return 1
+    wait_config_report "$CFG_REPORT_BEFORE"
+}
+
+# 配置文件预检：语法错误应当在 cp 进配置目录之前就报出来。
+# 原流程是先 cp 再异步 load，写错的配置已经落进配置目录，daemon 每次
+# reload 都会再拒一次，而用户只看到一句"load 已受理"。
+# 这里只做**语法检查**（node --check / JSON.parse），不执行配置文件本身。
+precheck_config_file() {
+    local f="$1"
+
+    # cdpcd 扫描配置目录时只认 .js 与 .json（cdpc 库里按后缀硬匹配）。
+    # .cjs/.mjs 能通过文件名合法性校验，却永远不会被加载——加进去之后
+    # "已受理"照打、服务却始终不存在，正是最难查的那种静默失败。
+    case "$f" in
+        *.cjs|*.mjs)
+            echo "cdpcd 只加载 .js 与 .json 配置，不会扫描 $(basename "$f")。"
+            echo "请把它改名为 .js 后再添加。"
+            return 1
+            ;;
+    esac
+
+    case "$f" in
+        *.js)
+            if ! node --check "$f" ; then
+                echo "配置文件语法错误，已中止添加：$f"
+                return 1
+            fi
+            ;;
+        *.json)
+            if ! node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$f" ; then
+                echo "配置文件不是合法 JSON，已中止添加：$f"
+                return 1
+            fi
+            ;;
+    esac
+
+    return 0
+}
+
+CFG_REPORT="$CDPC_LOGDIR/config-errors.log"
+
+report_mtime() {
+    stat -c '%y' "$CFG_REPORT" 2>/dev/null || echo none
+}
+
+# load / reload 是**异步受理**：sockop 打印"已受理"时 daemon 还没解析完配置。
+# 不等这份报告，配置被拒对用户就是完全静默的。等到报告刷新即回显。
+#
+# 退出码语义（脚本会依赖它）：
+#   1 = 本次关心的配置**确实被拒**；0 = 没被拒，或没能在超时内拿到报告。
+#   超时只是"没等到证据"，不是失败——否则 daemon 一忙，部署脚本里的
+#   cdpc reload 就会开始无故报错。
+#
+# $1 = 调用前的报告 mtime
+# $2 = 可选，只关心报告中提到该路径/名字的错误行；不给则看总的 skipped 计数
+wait_config_report() {
+    local before="$1"
+    local only="$2"
+    local i=0
+    local now skipped hit
+
+    while [ $i -lt 40 ] ; do
+        now=`report_mtime`
+
+        if [ "$now" != "$before" ] ; then
+            echo ""
+            echo "── 配置加载报告 ──"
+            cat "$CFG_REPORT"
+
+            if [ -n "$only" ] ; then
+                # 只判定本次这个文件：配置目录里早就存在的其他坏配置
+                # 不该让本次 add 报失败。
+                hit=`grep -F -- "$only" "$CFG_REPORT" 2>/dev/null | grep '^! '`
+                [ -n "$hit" ] && return 1
+                return 0
+            fi
+
+            skipped=`sed -n 's/.*skipped: \([0-9][0-9]*\).*/\1/p' "$CFG_REPORT" | head -n 1`
+            if [ -n "$skipped" ] && [ "$skipped" -gt 0 ] ; then
+                return 1
+            fi
+
+            return 0
+        fi
+
+        sleep 0.1
+        i=$((i+1))
+    done
+
+    echo "（未在 4 秒内等到配置加载报告，稍后用 cdpc config errors 查看；cdpcd 可能未运行）"
+    return 0
+}
+
+# `cdpc log <名字>` 查不到日志、或日志里只有事件行没有实际输出时的降级诊断。
+# 用户此刻要的是"为什么没有输出"，而不是一句 not found 就退出。
+log_diagnose() {
+    local name="$1"
+    local logbase="$2"
+    local appname="$3"
+    local hit
+
+    echo ""
+    echo "── 诊断 ──"
+
+    hit=`$0 has-name "$name" 2>/dev/null`
+    if [ -z "$hit" ] ; then
+        echo "· cdpcd 中不存在服务 $name —— 配置未加载 / 名字写错 / cdpcd 不可达"
+    else
+        echo "· cdpcd 中存在该服务；运行时状态与 cause 见： cdpc inspect $name"
+    fi
+
+    if [ -f "$logbase/config-errors.log" ] ; then
+        # -A 1：报告里错误行的下一行才是具体原因，只抓标题行等于没说
+        hit=`grep -n -A 1 -F -- "$appname" "$logbase/config-errors.log" 2>/dev/null`
+        if [ -n "$hit" ] ; then
+            echo "· 配置加载报告中提到了它（$logbase/config-errors.log）："
+            echo "$hit" | sed 's/^/    /'
+        else
+            echo "· 配置加载报告未提到它，报告头部："
+            head -n 2 "$logbase/config-errors.log" | sed 's/^/    /'
+        fi
+    else
+        echo "· 没有配置加载报告，cdpcd 尚未加载过配置：$logbase/config-errors.log"
+    fi
+
+    if [ -f "$logbase/cdpcd.log" ] ; then
+        hit=`tail -n 2000 "$logbase/cdpcd.log" | grep -F -- "$appname" | tail -n 20`
+        if [ -n "$hit" ] ; then
+            echo "· cdpcd 日志中的相关记录："
+            echo "$hit" | sed 's/^/    /'
+        else
+            echo "· cdpcd 日志中没有与 $appname 相关的记录：$logbase/cdpcd.log"
+        fi
+    fi
+
+    echo "· 还可以看： cdpc status $name  /  cdpc config errors  /  cdpc log（不带名字，看 cdpcd 全部日志）"
 }
 
 clear_logs() {
     LOGFILES=`ls $CDPC_LOGDIR`
     for f in $LOGFILES ; do
-        if [ "$f" = "cdpcd.log" ] ; then
-            continue
-        fi
+        # 这三个不是"日志"而是排障凭据，清日志不该把它们一起抹掉：
+        #   cdpcd.log         —— 由 --clear-all 单独处理
+        #   config-errors.log —— 当前配置状态的快照，删掉要等下次 load 才重建
+        #   audit.log         —— 变更审计，清日志顺手清审计是说不通的
+        case "$f" in
+            cdpcd.log|config-errors.log|audit.log) continue ;;
+        esac
         if [ -f "$CDPC_LOGDIR/$f" ] ; then
             rm "$CDPC_LOGDIR/$f"
         fi
@@ -380,7 +535,8 @@ case $1 in
         ;;
 
     reload)
-        node $CDPC_INS_DIR/sockop.js reload
+        CFG_REPORT_BEFORE=`report_mtime`
+        node $CDPC_INS_DIR/sockop.js reload && wait_config_report "$CFG_REPORT_BEFORE"
         ;;
 
     remove)
@@ -474,8 +630,10 @@ case $1 in
                 ;;
         esac
 
+        # LOG_BASEDIR 是该目标 daemon 的 logs 目录：诊断要读的 cdpcd.log 与
+        # config-errors.log 都在这里，root 看他人服务时必须跟着切过去。
         if [ -z "$LOG_USER" ] || [ "$LOG_USER" = "root" ] ; then
-            LOG_FILE="$CDPC_LOGDIR/apps/$LOG_APP.log"
+            LOG_BASEDIR="$CDPC_LOGDIR"
         else
             if [ "$UID" -ne 0 ] ; then
                 echo "deny!! 普通用户只能查看自己的服务。"
@@ -486,18 +644,34 @@ case $1 in
                 echo "$LOG_USER : 未授权用户"
                 exit 1
             fi
-            LOG_FILE="$UHOME/.cdpc/logs/apps/$LOG_APP.log"
+            LOG_BASEDIR="$UHOME/.cdpc/logs"
         fi
+
+        LOG_FILE="$LOG_BASEDIR/apps/$LOG_APP.log"
 
         if [ ! -f "$LOG_FILE" ] ; then
             echo "未找到应用日志：$LOG_FILE"
+            log_diagnose "$LOG_NAME" "$LOG_BASEDIR" "$LOG_APP"
             exit 1
         fi
 
         if [ "$LOG_FOLLOW" -eq 1 ] ; then
+            # 跟踪模式先给出诊断，再进入 tail -f：
+            # 卡在 tail -f 上什么都不出现时，上面这段就是唯一的线索。
+            log_diagnose "$LOG_NAME" "$LOG_BASEDIR" "$LOG_APP"
+            echo ""
+            echo "── $LOG_FILE ──"
             tail -f "$LOG_FILE"
         else
             tail -n 200 "$LOG_FILE"
+
+            # 日志里只有 cdpcd 写的事件行（== 启动/退出、!! 失败），
+            # 说明服务根本没产生输出 —— 这正是用户说"看不到有效信息"的场景，
+            # 自动补上诊断，不用他再去猜该看哪个文件。
+            LOG_BODY=`grep -c -v -E '^(==|!!|=====|[[:space:]]*$)' "$LOG_FILE" 2>/dev/null`
+            if [ -z "$LOG_BODY" ] || [ "$LOG_BODY" -eq 0 ] ; then
+                log_diagnose "$LOG_NAME" "$LOG_BASEDIR" "$LOG_APP"
+            fi
         fi
         ;;
 

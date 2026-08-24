@@ -125,12 +125,16 @@ if (!sockFile) {
     let childs = model.filterChilds(ld, applist, args.user)
     if (childs.length === 0) process.exit(0)
 
-    let rows = model.buildRows(childs, { detail: args.list })
+    // 展开详情时按终端宽度加宽（只延长最后一列）；概览与非 TTY 保持默认宽度。
+    // root 逐用户串行调用本脚本，各次拿到的终端宽度一致，多用户表格依旧对齐。
+    let widths = model.summaryWidths(args.list, process.stdout.columns, childs)
+
+    let rows = model.buildRows(childs, { detail: args.list, widths })
     let title = args.user ? `User: ${args.user}` : undefined
 
     console.log(renderTable(model.SUMMARY_HEADERS, rows, {
       title,
-      minWidths: model.SUMMARY_MIN_WIDTHS,
+      minWidths: widths,
       boldHeader: true
     }).join('\n'))
     console.log('')

@@ -133,35 +133,58 @@ function closeConns() {
   conns.clear()
 }
 
-async function snapshot(detail) {
-  let allLines = []
+async function snapshot(detail, termCols) {
+  // 先把所有目标取回来：列宽必须由**全部用户的内容**一起决定，
+  // 各表用同一套宽度才能跨用户对齐；边取边渲染做不到这一点。
+  let fetched = []
   let sysSource = null
+
   for (let t of targets) {
     let res = await fetchTarget(t)
 
     if (!res.ok) {
-      if (allLines.length > 0) allLines.push('')
-      // TUI 按行计算帧高，单个元素里绝不能含换行
-      let lines = String(res.message).split('\n')
-      allLines.push(`  ${t.user || 'root'}  (${lines[0]})`)
-      for (let extra of lines.slice(1)) allLines.push(extra)
+      fetched.push({ t, ok: false, message: res.message })
       continue
     }
 
     let ld = res.data
     if (!sysSource && ld.sys) sysSource = ld
-    let childs = model.filterChilds(ld, applist, t.user)
-    if (childs.length === 0) continue
-    let rows = model.buildRows(childs, { detail })
-    let title = t.user ? `User: ${t.user}` : undefined
+
+    fetched.push({ t, ok: true, childs: model.filterChilds(ld, applist, t.user) })
+  }
+
+  // 展开详情时把表格放宽到终端宽度的 85%（只延长最后一列），收起即恢复默认
+  let allChilds = []
+  for (let f of fetched) {
+    if (f.ok) for (let c of f.childs) allChilds.push(c)
+  }
+  let widths = model.summaryWidths(detail, termCols, allChilds)
+
+  let allLines = []
+
+  for (let f of fetched) {
+    if (!f.ok) {
+      if (allLines.length > 0) allLines.push('')
+      // TUI 按行计算帧高，单个元素里绝不能含换行
+      let lines = String(f.message).split('\n')
+      allLines.push(`  ${f.t.user || 'root'}  (${lines[0]})`)
+      for (let extra of lines.slice(1)) allLines.push(extra)
+      continue
+    }
+
+    if (f.childs.length === 0) continue
+
+    let rows = model.buildRows(f.childs, { detail, widths })
+    let title = f.t.user ? `User: ${f.t.user}` : undefined
     let lines = renderTable(model.SUMMARY_HEADERS, rows, {
       title,
-      minWidths: model.SUMMARY_MIN_WIDTHS,
+      minWidths: widths,
       boldHeader: true
     })
     if (allLines.length > 0) allLines.push('')  // 表间空行
     for (let ln of lines) allLines.push(ln)
   }
+
   return { lines: allLines, sys: sysSource }
 }
 
@@ -169,7 +192,7 @@ async function snapshot(detail) {
 // 非 TTY：一次性打印（与 outstatus 多目标串联等价）
 // ------------------------------------------------------------
 async function runSnapshotOnce() {
-  let snap = await snapshot(args.list)
+  let snap = await snapshot(args.list, process.stdout.columns)
   if (snap.lines.length > 0) console.log(snap.lines.join('\n'))
   closeConns()
 }
@@ -230,7 +253,8 @@ function runTTY() {
   }
 
   let refresh = async () => {
-    let snap = await snapshot(state.detail)
+    // 每帧都重新取终端宽度：窗口改过大小后，下一次刷新就按新宽度重排
+    let snap = await snapshot(state.detail, ctrl ? ctrl.getSize().cols : 0)
     state.content = snap.lines
     state.sysLine = snap.sys ? model.fmtSysLoad(snap.sys) : ''
     render()

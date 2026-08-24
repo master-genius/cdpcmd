@@ -326,63 +326,205 @@ let apps_logdir = `${logdir}/apps`
 try_mkdir(apps_logdir)
 
 /**
- * [包C] 应用日志：把子进程 stdout/stderr 采集到 logs/apps/<name>.log。
+ * [包C] 应用日志：logs/apps/<name>.log 不只是 stdout/stderr 的转储，
+ * 而是**这个服务的全部可观测信息**——启动、退出码/信号、spawn 失败原因。
  *
- * 子进程一律非 detached（与 cdpcd 同生死），所以 cdpcd 始终在写入路径上：
- * 由 cdpcd 持有写入流，按累计字节数轮转（rename→reopen，单备份 .1）。
- * cdpc 不参与日志，capture 全在此处，通过 cdpc 现成的 callback 钩子挂载。
+ * 之所以必须这样：spawn 失败（命令不存在等）时 Node 只发 'error'，
+ * **不发 'exit'**，子进程的 stdout/stderr 虽然存在但永远没有数据。
+ * 原实现只采集 stdout/stderr，于是"命令写错了"在应用日志里表现为
+ * 一行 `pid=undefined 启动` 之后彻底安静——用户看不到任何有效信息。
+ *
+ * 写入流按**服务名**持有（不是按每次 spawn），原因有二：
+ *   1. 重启循环下按 spawn 建流会churn fd，且 written 计数每次归零，轮转失效；
+ *   2. 退出后仍需能写"退出/失败"记录，流不能随子进程一起关。
  */
 const DEFAULT_MAX_LOG_BYTES = 5 * 1024 * 1024
 
-function attachAppLog(ch, name, maxBytes) {
-  if (!ch || !ch.stdout || !ch.stderr) return
+// name -> {file, max, stream, written, lastLine, repeat}
+const appLogSinks = new Map()
+
+/**
+ * 服务名直接拼进日志文件路径，所以**必须**先过一遍命名规则再用。
+ * 这里的来源包括被 cdpc 拒绝的配置（比如 name 非法、含 / 或 ..），
+ * 不校验就等于让配置文件决定往哪写文件。
+ * 规则与 cdpc 的 _checkAppName 一致：字母或数字开头，仅含字母数字下划线减号，
+ * 长度不超过 50（外加 @，与 CLI 的 check_config_filename 保持一致）。
+ */
+function isSafeAppName(name) {
+  return typeof name === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_@-]{0,49}$/.test(name)
+}
+
+function openAppLogStream(file) {
+  let s = fs.createWriteStream(file, {flags: 'a', mode: 0o644})
+  s.on('error', err => clog.errorLog(err, '--ERR-APPLOG--'))
+  return s
+}
+
+function getAppLogSink(name, maxBytes) {
+  if (!isSafeAppName(name)) return null
+
+  let sink = appLogSinks.get(name)
+  if (sink) {
+    // maxLogBytes 可能随 reload 变化，取最新的一次配置
+    if (typeof maxBytes === 'number' && maxBytes > 0) sink.max = maxBytes
+    return sink
+  }
 
   let file = `${apps_logdir}/${name}.log`
-  let max = (typeof maxBytes === 'number' && maxBytes > 0) ? maxBytes : DEFAULT_MAX_LOG_BYTES
 
-  let stream = fs.createWriteStream(file, {flags: 'a', mode: 0o644})
-  stream.on('error', err => clog.errorLog(err, '--ERR-APPLOG--'))
-  stream.write(`\n===== [${(new Date()).toLocaleString()}] ${name} pid=${ch.pid} 启动 =====\n`)
-
+  // written 从**文件实际大小**起算：daemon 重启后若从 0 起算，
+  // 已经很大的文件会一直不轮转，直到再写满一个 max 才轮转。
   let written = 0
+  try {
+    written = fs.statSync(file).size
+  } catch (err) {}
 
-  // 轮转：当前文件改名为 .1（覆盖旧备份），原写入流的残留缓冲随 inode 落到 .1，
-  // 新建写入流接管 logs/apps/<name>.log。cdpcd 独占该文件 fd，rename 安全无竞态。
-  function rotate() {
-    let old = stream
+  sink = {
+    file,
+    max: (typeof maxBytes === 'number' && maxBytes > 0) ? maxBytes : DEFAULT_MAX_LOG_BYTES,
+    stream: openAppLogStream(file),
+    written,
+    lastLine: '',
+    repeat: 0
+  }
+
+  appLogSinks.set(name, sink)
+
+  return sink
+}
+
+// 轮转：当前文件改名为 .1（覆盖旧备份），原写入流的残留缓冲随 inode 落到 .1，
+// 新建写入流接管 logs/apps/<name>.log。cdpcd 独占该文件 fd，rename 安全无竞态。
+function rotateAppLog(sink) {
+  let old = sink.stream
+  try {
+    fs.renameSync(sink.file, sink.file + '.1')
+  } catch (err) {}
+  sink.stream = openAppLogStream(sink.file)
+  sink.written = 0
+  try { old.end() } catch (err) {}
+}
+
+// 写入前判断轮转：保证当前 logs/apps/<name>.log 始终留有最新输出，
+// 不会出现"刚轮转完当前文件为空、cdpc log 看不到东西"。
+function appLogWrite(sink, chunk) {
+  if (!sink || !sink.stream) return
+
+  if (sink.written >= sink.max) {
+    // `cdpc log --clear` 用 truncate 清空文件（不能 rm，流还开着），
+    // 此时 written 是过时的高值。不核对真实大小就会把刚清空的文件
+    // 轮转成 .1，白白毁掉上一份备份。
+    let real = sink.written
     try {
-      fs.renameSync(file, file + '.1')
+      real = fs.statSync(sink.file).size
     } catch (err) {}
-    stream = fs.createWriteStream(file, {flags: 'a', mode: 0o644})
-    stream.on('error', err => clog.errorLog(err, '--ERR-APPLOG--'))
-    written = 0
-    try { old.end() } catch (err) {}
+
+    if (real >= sink.max) {
+      rotateAppLog(sink)
+    } else {
+      sink.written = real
+    }
   }
 
-  // 写入前判断轮转：保证当前 logs/apps/<name>.log 始终留有最新输出，
-  // 不会出现"刚轮转完当前文件为空、applog 看不到东西"。
+  sink.stream.write(chunk)
+  // 字符串的 .length 是 UTF-16 码元数，不是字节数：中文事件行会少算一半以上，
+  // 轮转阈值随之失准（stdout/stderr 来的是 Buffer，.length 本就是字节）。
+  sink.written += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk)
+}
+
+/**
+ * 事件行（启动/退出/失败）统一格式，并折叠连续重复：
+ * 重启循环里同一条失败信息每秒一遍会把真正的输出淹掉。
+ */
+function appLogEvent(sink, mark, text) {
+  if (!sink) return
+
+  let line = `${mark} [${(new Date()).toLocaleString()}] ${text}`
+
+  if (line.substring(line.indexOf(']') + 1) === sink.lastLine) {
+    sink.repeat += 1
+    // 1,2,4,8... 次时才落一行，避免刷屏又不丢失"还在持续发生"的事实
+    if ((sink.repeat & (sink.repeat - 1)) !== 0) return
+    appLogWrite(sink, `${line}   （同样的记录已重复 ${sink.repeat} 次）\n`)
+    return
+  }
+
+  sink.lastLine = line.substring(line.indexOf(']') + 1)
+  sink.repeat = 0
+  appLogWrite(sink, line + '\n')
+}
+
+/**
+ * 供 cdpc 库以外的路径（beforeStartCallback 里的限额读取失败等）
+ * 把带服务名的错误同时落到该服务自己的日志里。
+ */
+function appLogNotice(name, text) {
+  // 名字不合法时没有对应的 <name>.log 可写，也不该凭它造文件；
+  // 这类情况 clog 那条记录已经覆盖，直接跳过。
+  appLogEvent(getAppLogSink(name), '!!', text)
+}
+
+/**
+ * @param {object} ch    子进程句柄
+ * @param {string} name  服务名
+ * @param {number} maxBytes 单文件轮转阈值
+ * @param {object} cm    CDPC 实例；退出时要回读 childs[name].cause
+ */
+function attachAppLog(ch, name, maxBytes, cm) {
+  if (!ch) return
+
+  let sink = getAppLogSink(name, maxBytes)
+  if (!sink) return
+
+  // spawn 失败时 ch.pid 是 undefined，直接打印会得到误导性的 `pid=undefined`
+  appLogEvent(sink, '==', ch.pid
+    ? `${name} 启动  pid=${ch.pid}`
+    : `${name} 启动中（尚未拿到 pid）`)
+
   function onData(chunk) {
-    if (!stream) return
-    if (written >= max) rotate()
-    stream.write(chunk)
-    written += chunk.length
+    appLogWrite(sink, chunk)
   }
 
-  ch.stdout.on('data', onData)
-  ch.stderr.on('data', onData)
+  ch.stdout && ch.stdout.on('data', onData)
+  ch.stderr && ch.stderr.on('data', onData)
 
-  let closed = false
-  function closeStream() {
-    if (closed) return
-    closed = true
-    let s = stream
-    stream = null
-    // 延迟一点，让管道里残留数据落盘后再关闭
-    s && setTimeout(() => { try { s.end() } catch (err) {} }, 200)
-  }
+  /**
+   * prependListener 而不是 on：cdpc 自己的 exit 监听器是在 spawn 之后、
+   * 调 callback（也就是本函数）之前挂上的，会排在前面先执行；而它在
+   * restartDelay <= 0 时会**同步**调用 startChild，那里第一件事就是把
+   * chk.cause 清空。排到它前面才读得到本次退出真正的 cause。
+   */
+  ch.prependListener('exit', (code, sig) => {
+   /**
+    * 整个函数体必须包在 try 里。排到 cdpc 的监听器前面之后，这里同步抛出
+    * 会中断整条监听链，cdpc 自己那个设置 state=EXIT、释放 lockForStart、
+    * 安排重启的处理器就不会执行——服务会静悄悄脱离托管。
+    * 记日志的代价绝不能是把状态机打断，写日志失败就算了。
+    */
+   try {
+    let parts = []
+    if (code !== null && code !== undefined) parts.push(`code=${code}`)
+    if (sig) parts.push(`signal=${sig}`)
 
-  ch.on('exit', closeStream)
-  ch.on('error', closeStream)
+    /**
+     * cause 是 cdpc 内部对"为什么会走到这一步"的记录（'maxrss|restart|…'、
+     * 'SIBLING-CONFLICT|…' 等）。它只写进 chk、不走 errorHandle，所以被内存
+     * 限额打死的服务在日志里跟被人手动 kill 长得一模一样——都是一行
+     * signal=SIGTERM。限额判定是**先设 cause 再触发 kill**，此刻那个值已经在了，
+     * 顺手读出来拼进退出行即可，不必改动 cdpc 库。
+     */
+    let cur = cm && cm.childs && cm.childs[name]
+    let cause = cur && cur.cause ? `  cause=${cur.cause}` : ''
+
+    appLogEvent(sink, '==',
+      `${name} 退出  ${parts.join('  ') || '（无退出码与信号）'}${cause}`)
+   } catch (err) {}
+  })
+
+  // spawn 失败只有 error、没有 exit：这条是"命令不存在/无权限"唯一的现场
+  ch.on('error', err => {
+    appLogEvent(sink, '!!', `${name} 启动失败  ${err.code || 'ERROR'}: ${err.message}`)
+  })
 }
 
 function writeConfigErrors(result) {
@@ -415,6 +557,27 @@ function writeConfigErrors(result) {
   fs.writeFile(config_errors_file, lines.join('\n') + '\n', err => {
     err && clog.errorLog(err, '--ERR-WRITE-CONFIG-ERRORS--')
   })
+
+  /**
+   * config-errors.log 是覆盖式快照，只有主动 `cdpc config errors` 才看得到；
+   * 配置被拒这件事本身必须留在时间序列日志里，否则"我明明加了配置却没这个服务"
+   * 在 cdpcd.log 中完全没有痕迹。
+   */
+  for (let s of result.skipped) {
+    let loc = s.file || s.name || '-'
+    if (s.index !== undefined) loc += ` [数组第 ${s.index} 项]`
+
+    clog.log({
+      type: 'log',
+      logname: 'CONFIG-SKIP',
+      message: `[${s.code}] ${loc} : ${s.message}`,
+      other: s.name || '-'
+    })
+
+    // 配置里写了服务名的，把原因也落到该服务自己的日志：
+    // 用户排障的第一反应是 `cdpc log <名字>`，那里必须能看见"根本没被加载"。
+    s.name && appLogNotice(s.name, `配置被拒绝，服务未加载：[${s.code}] ${s.message}`)
+  }
 }
 
 /**
@@ -439,6 +602,26 @@ const cm = new cdpc({
       chk.disabled = true
     }
 
+    /**
+     * cdpc 的 checkConfig 只在配了 file 时才强制 command：既没有 file、
+     * 也没有 command 的配置会被**接受**——服务注册进去却永远停在 PREPARE，
+     * cause 为空、没有进程、没有日志，排障时完全无从下手。
+     * cdpc 版本已锁定在 6.1.2，护栏补在这里，至少要出声。
+     */
+    if (chk.name && !chk.command && !chk.file) {
+      let msg = `${chk.name}: 配置里既没有 command 也没有 file，`
+        + `该服务无法启动，会一直停在 PREPARE。`
+
+      clog.log({
+        type: 'log',
+        logname: 'CONFIG-INVALID',
+        message: msg,
+        other: chk.configPath || '-'
+      })
+
+      appLogNotice(chk.name, msg)
+    }
+
     // [包C] 应用日志：stdout/stderr 改 pipe，并把采集挂到 cdpc 的 callback 钩子上。
     //   stdio 是常量配置，设一次即可；callback 每次 spawn 都会被调用（含重启）。
     if (chk.name) {
@@ -452,10 +635,32 @@ const cm = new cdpc({
 
       let logName = chk.name
       let logMax = chk.maxLogBytes
+
+      // 幂等包装：beforeStartCallback 在每次 add/load 都会跑一遍，
+      // 不打标记的话包装会层层叠加，同一次 spawn 挂上 N 份采集器 → 日志重复 N 份。
       let prevCb = chk.callback
-      chk.callback = (ch, cm, c) => {
-        attachAppLog(ch, logName, logMax)
-        typeof prevCb === 'function' && prevCb(ch, cm, c)
+      if (!prevCb || prevCb.__applogWrapped !== true) {
+        let wrapped = (ch, cm, c) => {
+          attachAppLog(ch, logName, logMax, cm)
+          typeof prevCb === 'function' && prevCb(ch, cm, c)
+        }
+        wrapped.__applogWrapped = true
+        chk.callback = wrapped
+      }
+
+      /**
+       * cdpc 的 errorHandle 收到的 spawn 错误（如 `spawn xxx ENOENT`）
+       * **不带服务名**，落到 cdpcd.log 里是一条无主的错误，现场无从定位。
+       * onError 是 cdpc 提供的每服务错误钩子，名字就在闭包里。
+       */
+      let prevOnError = chk.onError
+      if (!prevOnError || prevOnError.__applogWrapped !== true) {
+        let onErr = (err) => {
+          clog.errorLog(err, `--ERR-CHILD--[${logName}]`)
+          typeof prevOnError === 'function' && prevOnError(err)
+        }
+        onErr.__applogWrapped = true
+        chk.onError = onErr
       }
     }
 
@@ -467,7 +672,11 @@ const cm = new cdpc({
       limitobj && typeof limitobj === 'object' && checkAndSetLimit(chk, limitobj)
     } catch (err) {
       args.debug && err.code !== 'ENOENT' && console.error(err);
-      err.code !== 'ENOENT' && clog.errorLog(err, '--ERR-SET-LIMIT--')
+      if (err.code !== 'ENOENT') {
+        clog.errorLog(err, '--ERR-SET-LIMIT--')
+        // 限额没读进来，服务却照跑——这属于"静默失效"，必须落到该服务自己的日志
+        appLogNotice(chk.name, `限额配置读取失败，本服务当前未应用 limit：${err.message}`)
+      }
     }
   }
 })
