@@ -709,11 +709,10 @@ const cm = new cdpc({
     /**
      * 兜底告警：配置里既没有 command 也没有 file。
      *
-     * 打了 patches/cdpc-6.1.2-load-abort.patch 的库会在 checkConfig 就把这类
-     * 配置拒掉，根本走不到这里，本分支等同于死代码——**故意留着**：
-     * node_modules 是 vendor 的，一次 npm install 就会把补丁冲掉，
-     * 那时上游的行为是一路放行到 spawn(undefined) 抛异常、中断整批加载，
-     * 而这条日志就是现场唯一的线索。代价只有一个 if。
+     * cdpc >= 6.1.3 会在 checkConfig 就把这类配置拒掉（`command` 与 `file`
+     * 至少要有一个），根本走不到这里，本分支等同于死代码——**故意留着**：
+     * 依赖被降级或换成更早版本时，上游的行为是一路放行到 spawn(undefined)
+     * 抛异常、中断整批加载，而这条日志就是现场唯一的线索。代价只有一个 if。
      */
     if (chk.name && !chk.command && !chk.file) {
       let msg = `${chk.name}: 配置里既没有 command 也没有 file，该服务无法启动。`

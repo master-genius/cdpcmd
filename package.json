@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "cdpc": "^6.1.2",
+    "cdpc": "^6.1.3",
     "gohttp": "^6.1.0",
     "npargv": "^2.0.3"
   }
