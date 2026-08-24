@@ -534,6 +534,16 @@ function writeConfigErrors(result) {
   lines.push(`# 配置加载报告 ${ts}`)
   lines.push(`# loaded: ${result.loaded.length}  skipped: ${result.skipped.length}  removed: ${result.removed.length}`)
 
+  /**
+   * 整批加载失败（loadConfig 内部抛出）时，报告里原本只剩一个 loaded: 0，
+   * 看着跟"没有新配置"一模一样。必须挑明：这一批是**中断**的，
+   * 没列进 skipped 的配置也未必加载成功。
+   */
+  if (result.ok === false) {
+    lines.push(`! 本次加载中断：${result.errmsg || '未知原因'}`)
+    lines.push(`! 未被列出的配置也未必已加载，修好后重新 cdpc reload。`)
+  }
+
   if (result.loaded.length > 0) {
     lines.push(`# 已加载: ${result.loaded.join(', ')}`)
   }
@@ -563,6 +573,15 @@ function writeConfigErrors(result) {
    * 配置被拒这件事本身必须留在时间序列日志里，否则"我明明加了配置却没这个服务"
    * 在 cdpcd.log 中完全没有痕迹。
    */
+  if (result.ok === false) {
+    clog.log({
+      type: 'log',
+      logname: 'CONFIG-ABORT',
+      message: `配置加载中断：${result.errmsg || '未知原因'}`,
+      other: 'warn'
+    })
+  }
+
   for (let s of result.skipped) {
     let loc = s.file || s.name || '-'
     if (s.index !== undefined) loc += ` [数组第 ${s.index} 项]`
@@ -694,8 +713,8 @@ const cm = new cdpc({
      * cdpc 版本已锁定在 6.1.2，护栏补在这里，至少要出声。
      */
     if (chk.name && !chk.command && !chk.file) {
-      let msg = `${chk.name}: 配置里既没有 command 也没有 file，`
-        + `该服务无法启动，会一直停在 PREPARE。`
+      let msg = `${chk.name}: 配置里既没有 command 也没有 file，该服务无法启动`
+        + `（cdpc 会把它置为 ERROR 并记下 cause=NO-COMMAND）。`
 
       clog.log({
         type: 'log',

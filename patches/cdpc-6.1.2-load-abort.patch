@@ -1,0 +1,64 @@
+--- a/index.js
++++ b/index.js
+@@ -1677,8 +1677,31 @@
+ 
+     for (let cfg of config) {
+       if ( this.checkConfig(cfg, reload) ) {
+-        this.tryMakeChild(cfg, reload)
+-        ok.push(cfg.name)
++        /**
++         * 单个配置把异常抛出来，绝不能连累整批。
++         *
++         * 原先 tryMakeChild 裸调用：任何一个配置在启动路径上同步抛出
++         * （典型是 spawn 的参数校验），异常就冲出 loadConfig，
++         * **排在它后面的配置一个都不会被加载**，而现场只有一条
++         * --ERR-LOAD-CONFIG--，报告里则是一个看着人畜无害的 loaded: 0。
++         *
++         * 捕获后并入 failures，与 checkConfig 失败走同一条上报链路
++         * （failures → skipped → onLoadConfig）。注意此时服务**可能已经登记进
++         * childs**（异常发生在 tryMakeChild 内部的哪一步不确定），这里刻意
++         * 不清理：status 里看得见一个 ERROR 的服务，远好过它凭空消失。
++         */
++        try {
++          this.tryMakeChild(cfg, reload)
++          ok.push(cfg.name)
++        } catch (err) {
++          this.errorHandle(err, '--ERR-MAKE-CHILD--')
++          failures.push({
++            file: cfg.configPath || '',
++            name: cfg.name || '',
++            code: 'START_THROW',
++            message: `启动 ${cfg.name} 时抛出异常，该服务未能启动：${err.message}`
++          })
++        }
+       } else {
+         this.errorHandle(this.lastErrorInfo, '--ERR-CONFIG--')
+         failures.push({
+@@ -2770,6 +2793,27 @@
+       return chk
+     }
+ 
++    /**
++     * spawn 之前必须挡住空 command。
++     *
++     * checkConfig 只在配了 file 时才强制 command，所以"既没有 file 也没有
++     * command"的配置是能通过校验的，走到这里就是 spawn(undefined) ——
++     * Node 同步抛 ERR_INVALID_ARG_TYPE，异常一路穿过 tryMakeChild、runChilds
++     * 冲出 loadConfig：**这一批里排在它后面的配置全都不再加载**。
++     * 一个配置写错却让别的服务集体消失，是最难查的那种故障。
++     *
++     * 这里按已有的 CMDLINE-CHECK 早退同一套路处理：置 ERROR + cause 后返回，
++     * 服务在 status / inspect 里看得见、也说得出原因。
++     */
++    if (!chk.real_command && !chk.command) {
++      chk.lockForStart = false
++      chk.state = this.state.ERROR
++      chk.cause = 'NO-COMMAND|START|配置里既没有 command 也没有 file，无法启动'
++      this.errorHandle(
++        new Error(`${chk.name}: ${chk.cause.split('|').pop()}`), '--ERR-NO-COMMAND--')
++      return chk
++    }
++
+     chk.cause = ''
+ 
+     // [WRAP] 包装存在时用 real_*：cluster 服务实际执行的是 launcher。
