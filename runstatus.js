@@ -174,7 +174,12 @@ async function snapshot(detail, termCols) {
 
     if (f.childs.length === 0) continue
 
-    let rows = model.buildRows(f.childs, { detail, widths })
+    // 同 outstatus：指定了具体服务名就完整列出进程树，不封顶
+    let rows = model.buildRows(f.childs, {
+      detail,
+      widths,
+      fullProcs: applist.length > 0
+    })
     let title = f.t.user ? `User: ${f.t.user}` : undefined
     let lines = renderTable(model.SUMMARY_HEADERS, rows, {
       title,

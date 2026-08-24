@@ -129,7 +129,16 @@ if (!sockFile) {
     // root 逐用户串行调用本脚本，各次拿到的终端宽度一致，多用户表格依旧对齐。
     let widths = model.summaryWidths(args.list, process.stdout.columns, childs)
 
-    let rows = model.buildRows(childs, { detail: args.list, widths })
+    /**
+     * 指定了具体服务名时不再对进程列表封顶：这时用户就是在查这一个服务，
+     * 完整进程树正是他要的；看全表（不带名字）才需要封顶，否则一个几十
+     * 进程的服务会把整屏冲掉。
+     */
+    let rows = model.buildRows(childs, {
+      detail: args.list,
+      widths,
+      fullProcs: applist.length > 0
+    })
     let title = args.user ? `User: ${args.user}` : undefined
 
     console.log(renderTable(model.SUMMARY_HEADERS, rows, {
