@@ -7,18 +7,26 @@
 补丁同时是搬运凭据：这些改动最终应当回到依赖自己的源码仓库并发版，
 本地补丁只是过渡。
 
-## cdpc-6.1.2-tree-proc-limit-50.patch
+## cdpc-6.1.2-setmaxtree.patch
 
-`cdpc@6.1.2` 的 `index.js`：进程树明细列表上限 `TREE_PROC_LIMIT` 20 → 50。
+给 `cdpc@6.1.2` 加一个静态方法 `CDPC.setMaxTree(n)`，用来设定进程树明细
+列表的上限 `TREE_PROC_LIMIT`（原本是写死的模块常量 20，无任何入口）。
 
-20 对 `cdpc status <名字> -l` 太紧——稍微多几个 worker 就有一截看不到，
-而这个命令的用途恰恰是看清某一个服务。注意它只约束"逐进程列出多少个"，
-CPU / MEM 合计一直是按整棵树求和的，不受此值影响。
+    CDPC.setMaxTree(100)   // 立即生效，下次采集进程树即按新值
+
+· 静态方法，不挂原型：它改的是模块级变量，对本进程内所有实例一起生效。
+· 参数必须是 [10, 10000] 的整数；非法值**抛出**（TypeError / RangeError）
+  而不是静默回退默认值——这是启动期配置调用，写错了就该当场知道。
+· 它只约束"逐进程列出多少个"以及随之而来的 cmdline 读取次数；
+  整棵子树一直是完整遍历的，cpuTotal / memTotal / procCount 不受影响。
+
+补丁**只提供机制**，库层默认值仍是 20；本仓库取多少是上层策略，
+写在 `cdpcd.js` 里（当前 `cdpc.setMaxTree(50)`）。
 
 应用方式（在仓库根目录）：
 
-    git apply patches/cdpc-6.1.2-tree-proc-limit-50.patch --directory=node_modules/cdpc
+    git apply patches/cdpc-6.1.2-setmaxtree.patch --directory=node_modules/cdpc
 
 核对是否仍然生效：
 
-    grep -n 'TREE_PROC_LIMIT = ' node_modules/cdpc/index.js
+    node -e 'console.log(typeof require("cdpc").setMaxTree)'   # 应输出 function

@@ -581,6 +581,19 @@ function writeConfigErrors(result) {
 }
 
 /**
+ * 进程树明细列表的上限：库层默认 20 偏保守，`cdpc status <名字> -l` 稍微多
+ * 几个 worker 就有一截看不到，而这个命令的用途恰恰是看清某一个服务。
+ *
+ * 取多少是**策略**，归上层决定，库层只提供 setMaxTree 这个机制——跟 cgroup
+ * 限额那次的处置方式一致（库层不再强加配额，策略归上层）。
+ *
+ * 代价是每次采集进程树多读同样数量的 /proc/<pid>/cmdline；采集本身有
+ * TREE_LOAD_MIN_INTERVAL=800ms 节流，50 这个量级可接受。
+ * 合计（cpuTotal/memTotal/procCount）按整棵树求和，不受此值影响。
+ */
+cdpc.setMaxTree(50)
+
+/**
  * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。
  * notExitButSpread设置为true，可以在不退出的情况下扩散信号。
  */
