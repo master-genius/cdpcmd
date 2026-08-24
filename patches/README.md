@@ -21,7 +21,7 @@
   整棵子树一直是完整遍历的，cpuTotal / memTotal / procCount 不受影响。
 
 补丁**只提供机制**，库层默认值仍是 20；本仓库取多少是上层策略，
-写在 `cdpcd.js` 里（当前 `cdpc.setMaxTree(50)`）。
+写在 `cdpcd.js` 里：默认 50，可由环境变量 `CDPCD_MAX_TREE`（[10, 200]）覆盖。
 
 应用方式（在仓库根目录）：
 

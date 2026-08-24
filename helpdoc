@@ -51,6 +51,8 @@ LANG与LC_*取自/etc/default/locale、/etc/locale.conf或/etc/sysconfig/i18n，
 用户层为主目录下的 .cdpcd_env 文件，存在则由用户自己的cdpcd在启动时加载，
 root不读该文件。它会被该用户全部被托管服务继承，修改后重启自身daemon即生效，
 加载结果记录在 ~/.cdpc/logs/cdpcd.log 的USER-ENV条目中。
+.sp
+cdpcd 自身也认一个变量：CDPCD_MAX_TREE，见 status 一节。
 
 .sp
 文件为.env风格，支持export前缀，支持$VAR与${VAR}展开；单引号内为纯字面量、不展开；
@@ -140,8 +142,16 @@ status -l 展开详情（--runtime 交互界面里按 l 切换）。展开时表
 指定了具体服务名时（如 cdpc status pg -l）进程树完整列出，不做本地封顶；
 不带服务名看全表时仍只列前 5 个，其余折叠为"其他 N 个进程"，
 否则一个几十进程的服务会把整屏冲掉。
-cdpcd 采集侧另有一道进程树上限（TREE_PROC_LIMIT，本仓库已由 20 提到 50，
-见 patches/），被它截掉的部分折叠行会注明"（cdpcd 侧进程树上限）"。
+cdpcd 采集侧另有一道进程树上限（默认 50），被它截掉的部分折叠行会注明
+"（cdpcd 侧进程树上限）"。该上限可用环境变量 CDPCD_MAX_TREE 调整，
+取值为 [10, 200] 的十进制整数；非法值会被忽略并在 cdpcd.log 里以 MAX-TREE
+条目告警，daemon 照常启动。设定位置：
+.sp
+  · root daemon —— /etc/cdpcd.env（systemd unit 已带可选 EnvironmentFile）
+  · 用户 daemon —— /etc/environment（root 写一次，对所有授权用户生效）
+  · 用户 daemon —— ~/.cdpcd_env（用户自己覆盖，优先级最高）
+.sp
+改完重启对应的 cdpcd 生效。
 注意 CPU / MEM 合计始终按整棵树求和，不受这两道上限影响。
 
 .sp

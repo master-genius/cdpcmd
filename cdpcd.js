@@ -581,17 +581,89 @@ function writeConfigErrors(result) {
 }
 
 /**
- * 进程树明细列表的上限：库层默认 20 偏保守，`cdpc status <名字> -l` 稍微多
- * 几个 worker 就有一截看不到，而这个命令的用途恰恰是看清某一个服务。
+ * 进程树明细列表的上限。
  *
- * 取多少是**策略**，归上层决定，库层只提供 setMaxTree 这个机制——跟 cgroup
- * 限额那次的处置方式一致（库层不再强加配额，策略归上层）。
+ * 库层默认 20 偏保守：`cdpc status <名字> -l` 稍微多几个 worker 就有一截看不到，
+ * 而这个命令的用途恰恰是看清某一个服务。取多少是**策略**，归上层决定，
+ * 库层只提供 setMaxTree 这个机制——跟 cgroup 限额那次的处置一致
+ * （库层不再强加配额，策略归上层）。
  *
- * 代价是每次采集进程树多读同样数量的 /proc/<pid>/cmdline；采集本身有
- * TREE_LOAD_MIN_INTERVAL=800ms 节流，50 这个量级可接受。
- * 合计（cpuTotal/memTotal/procCount）按整棵树求和，不受此值影响。
+ * 允许用环境变量 CDPCD_MAX_TREE 覆盖。root 与普通用户的 daemon 跑的是同一份
+ * cdpcd.js、读的是同一个 process.env，所以两边都生效；区别只在各自从哪儿拿到
+ * 这个变量：
+ *   · root daemon    —— systemd unit 的 EnvironmentFile（默认 /etc/cdpcd.env）
+ *   · 用户 daemon    —— /etc/environment（root 写一次，对所有授权用户生效，
+ *                        经 lib/baseenv.js 进入用户 daemon 的环境）
+ *   · 用户 daemon    —— ~/.cdpcd_env（用户自己覆盖，优先级最高）
+ *
+ * 范围 [10, 200] 比库层的 [10, 10000] 窄：这是按真实场景收的口径——
+ * 上限再高，每次采集就要多读同样数量的 /proc/<pid>/cmdline，而几百个进程的
+ * 列表本身也早就超出"看得过来"的范畴了。采集有 800ms 节流，200 可接受。
+ *
+ * 合计（cpuTotal / memTotal / procCount）按整棵树求和，不受此值影响。
  */
-cdpc.setMaxTree(50)
+const MAX_TREE_DEFAULT = 50
+const MAX_TREE_MIN = 10
+const MAX_TREE_MAX = 200
+
+/**
+ * 环境变量取值与校验。
+ *
+ * 非法值**退回默认并出声**，不抛——这跟 CDPC.setMaxTree 的抛出策略并不矛盾：
+ * 那边的输入是程序员写死的调用，写错就该当场炸；这边的输入来自环境变量，
+ * 一个笔误不该让整个 daemon 起不来。但也绝不能静默吞掉，否则就成了
+ * "我明明设了却没生效"这类最难查的问题。
+ */
+function resolveMaxTree() {
+  let raw = process.env.CDPCD_MAX_TREE
+
+  if (raw === undefined || String(raw).trim() === '') {
+    return {value: MAX_TREE_DEFAULT, source: ''}
+  }
+
+  let text = String(raw).trim()
+
+  // 只认十进制整数：0x32 / 5e1 / +50 这类写法在环境变量里不该被"聪明地"接受
+  if (!/^[0-9]+$/.test(text)) {
+    return {
+      value: MAX_TREE_DEFAULT,
+      source: '',
+      warn: `CDPCD_MAX_TREE=${text} 不是十进制整数，已忽略，仍用默认值 ${MAX_TREE_DEFAULT}`
+    }
+  }
+
+  let n = parseInt(text, 10)
+
+  if (n < MAX_TREE_MIN || n > MAX_TREE_MAX) {
+    return {
+      value: MAX_TREE_DEFAULT,
+      source: '',
+      warn: `CDPCD_MAX_TREE=${n} 超出允许范围 [${MAX_TREE_MIN}, ${MAX_TREE_MAX}]，`
+        + `已忽略，仍用默认值 ${MAX_TREE_DEFAULT}`
+    }
+  }
+
+  return {value: n, source: 'CDPCD_MAX_TREE'}
+}
+
+let maxTree = resolveMaxTree()
+
+if (maxTree.warn) {
+  clog.log({type: 'log', logname: 'MAX-TREE', message: maxTree.warn, other: 'warn'})
+}
+
+// 值域 [10,200] 完整落在 setMaxTree 的 [10,10000] 内，这里不可能抛
+cdpc.setMaxTree(maxTree.value)
+
+// 用了默认值就不记：那不是"设置"，记了只是噪音。被环境变量改过才值得留痕。
+if (maxTree.source) {
+  clog.log({
+    type: 'log',
+    logname: 'MAX-TREE',
+    message: `进程树明细列表上限设为 ${maxTree.value}`,
+    other: maxTree.source
+  })
+}
 
 /**
  * cdpc会监听signals配置的信号，notExit用于控制是否在收到信号以后退出。

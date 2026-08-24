@@ -60,6 +60,18 @@ function fmtSystemd (options) {
   text += `RuntimeDirectoryMode=0755\n`
   text += `RuntimeDirectoryPreserve=yes\n`
 
+  /**
+   * root daemon 的可选调参入口（如 CDPCD_MAX_TREE）。
+   *
+   * 用专门的 /etc/cdpcd.env 而不是 /etc/environment：后者会把系统里所有变量
+   * 一股脑带进服务环境，副作用远超需要。前缀 `-` 表示文件不存在也不算失败，
+   * 所以这一行对现有部署是零影响的。
+   *
+   * 注意用户 daemon 走的是另一条路：它由 root 侧 lib/baseenv.js 构建环境，
+   * 读的是 /etc/environment，再叠加用户自己的 ~/.cdpcd_env。
+   */
+  text += `EnvironmentFile=-/etc/cdpcd.env\n`
+
   if (!options.restart) options.restart = 'always'
 
   text += `Restart=${options.restart}\n`
