@@ -69,7 +69,36 @@
      let cmdbase = cfg.command.indexOf('/') >= 0
        ? cfg.command.substring(cfg.command.lastIndexOf('/') + 1)
        : cfg.command
-@@ -2770,6 +2808,27 @@
+@@ -1991,6 +2029,28 @@
+     // cluster 要把"入口脚本 + 用户参数"整段搬到 launcher 的 -- 之后。
+     if (!this._normalizeWrap(cfg)) return false
+ 
++    /**
++     * command / file 至少要有一个 —— 补上这条一直没被表达过的不变式。
++     *
++     * 此前顶层从来没有这条校验：唯一的两处 `!cfg.command` 判断都嵌在
++     * `if (cfg.file)` 分支里（那是"file 是入口脚本、command 是解释器"这个用例
++     * 的内部逻辑），选项表里 command 与 file 又都标着"必须：否"。
++     * 于是"两个都不写"的配置一路放行到 spawn(undefined)，同步抛异常。
++     *
++     * 判定条件必须与 spawn 实际用的表达式一致：`real_command || command`。
++     * 只判 `command` 会误杀"只写 real_command"的包装型配置——那种配置今天是
++     * 能正常跑起来的，不能因为这条校验而失效。
++     *
++     * 放在这个位置有两个前提：file 分支已经把 command 从扩展名推导完毕；
++     * _normalizeWrap 已经把非字符串/空串的 real_command 删掉。
++     * 所以此刻看到的就是 spawn 将要收到的东西。
++     */
++    if (!cfg.command && !cfg.real_command) {
++      this.lastErrorInfo = `${cfg.name}: 没有可执行的命令，`
++        + `command 与 file 至少要指定一个。`
++      return false
++    }
++
+     if (!cfg.onlyArgs || !Array.isArray(cfg.onlyArgs)) {
+       cfg.onlyArgs = [...cfg.args]
+     }
+@@ -2770,6 +2830,27 @@
        return chk
      }
  

@@ -707,14 +707,16 @@ const cm = new cdpc({
     }
 
     /**
-     * cdpc 的 checkConfig 只在配了 file 时才强制 command：既没有 file、
-     * 也没有 command 的配置会被**接受**——服务注册进去却永远停在 PREPARE，
-     * cause 为空、没有进程、没有日志，排障时完全无从下手。
-     * cdpc 版本已锁定在 6.1.2，护栏补在这里，至少要出声。
+     * 兜底告警：配置里既没有 command 也没有 file。
+     *
+     * 打了 patches/cdpc-6.1.2-load-abort.patch 的库会在 checkConfig 就把这类
+     * 配置拒掉，根本走不到这里，本分支等同于死代码——**故意留着**：
+     * node_modules 是 vendor 的，一次 npm install 就会把补丁冲掉，
+     * 那时上游的行为是一路放行到 spawn(undefined) 抛异常、中断整批加载，
+     * 而这条日志就是现场唯一的线索。代价只有一个 if。
      */
     if (chk.name && !chk.command && !chk.file) {
-      let msg = `${chk.name}: 配置里既没有 command 也没有 file，该服务无法启动`
-        + `（cdpc 会把它置为 ERROR 并记下 cause=NO-COMMAND）。`
+      let msg = `${chk.name}: 配置里既没有 command 也没有 file，该服务无法启动。`
 
       clog.log({
         type: 'log',
