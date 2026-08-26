@@ -707,14 +707,20 @@ const cm = new cdpc({
     }
 
     /**
-     * 兜底告警：配置里既没有 command 也没有 file。
+     * 兜底告警：配置里没有任何可执行的命令。
      *
-     * cdpc >= 6.1.3 会在 checkConfig 就把这类配置拒掉（`command` 与 `file`
+     * cdpc >= 6.1.3 会在配置校验阶段就把这类配置拒掉（`command` 与 `file`
      * 至少要有一个），根本走不到这里，本分支等同于死代码——**故意留着**：
      * 依赖被降级或换成更早版本时，上游的行为是一路放行到 spawn(undefined)
      * 抛异常、中断整批加载，而这条日志就是现场唯一的线索。代价只有一个 if。
+     *
+     * 判定必须带上 real_command，与库里的不变式、以及 spawn 实际使用的
+     * `real_command || command` 保持一致：只写 real_command 的包装型配置
+     * （numactl 绑核这类）是**合法且能正常跑**的，此处 chk.command 与
+     * chk.file 都是 undefined，漏掉 real_command 就会给正常服务发假警报——
+     * 一条"该服务无法启动"会同时落进 cdpcd.log 和它自己的应用日志。
      */
-    if (chk.name && !chk.command && !chk.file) {
+    if (chk.name && !chk.command && !chk.real_command && !chk.file) {
       let msg = `${chk.name}: 配置里既没有 command 也没有 file，该服务无法启动。`
 
       clog.log({
