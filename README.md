@@ -143,9 +143,14 @@ daemon 无论优雅退出还是被 `kill -9`，worker 都能被收干净（后�
 注意 `limit.maxrss` 对 cluster 服务无效（它只测 launcher 自身），
 内存限制请用 cgroup。
 
-**cdpc 依赖**：**cdpc 6.1.3**（已发布到 npm），`package.json` 的范围声明为 `^6.1.3`，
+**cdpc 依赖**：**cdpc 6.2.0**（已发布到 npm），`package.json` 的范围声明为 `^6.2.0`，
 `package-lock.json` 也已锁到该版本；仓库内置（vendored）的副本与发布包**逐文件一致**。
 库本身的使用说明见 `node_modules/cdpc/README.md`。
+
+6.2.0 把配置校验的结果改成了 `{ok, message}` 形式（原先是「返回 boolean +
+把原因写进实例字段 `lastErrorInfo`」）。对 cdpcmd 的影响只有一处：`add()` 校验
+失败时，原因经 `errorHandle` 以 `--ERR-CONFIG--` 送达，不再需要、也不再可能
+去读实例字段。
 
 **分层：限额策略在 cdpcmd，不在库里。** cdpc 作为库，没被要求限制就跟系统默认走
 （`cpu` 不写或写 `0` 都是不限制，与 `memory` / `pids` 一致）。为了稳定性
