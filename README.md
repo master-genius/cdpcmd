@@ -344,9 +344,17 @@ root 用 `sudo cdpc ...` 管理系统级服务；被授权的普通用户直接 
 | `cdpc config errors` | 查看最近一次配置加载报告 |
 | `cdpc load` | 加载配置目录，新增服务会被启动 |
 | `cdpc reload` | 配置同步：未变更服务不重启，删除/改名的移除，改了命令的重启 |
+| `cdpc reload-force <name...>` | 强制重载：停止服务后按配置文件重建，让 `env` 等字段生效 |
 
-> `reload` 不会因 `restart` / `limit` / `env` 等字段的修改而重启服务，
-> 这类改动需显式 `cdpc restart <name>` 才生效。
+> **改了 `env` / `limit` / `cgroup` 要用 `reload-force`，`reload` 和 `restart` 都不行。**
+> 对"已存在且 `command`/`args` 未变"的服务，`reload` 不同步任何字段；
+> `restart` 则是拿服务已缓存的启动参数重新拉起，读到的还是加载时那份快照。
+> 只有让服务从注册表里彻底消失、再由配置文件重建，新值才会进入 `spawn`。
+>
+> `reload-force` 必须显式点名（可多个），不支持 `--all`；也不能用于
+> `configPath` 为空的服务（程序化添加的，移除后无从重建，命令会拒绝）。
+> 若配置文件此时不可加载，服务会停在"已停止且未重建"并明确报出，
+> 修好后 `cdpc load <配置文件名>` 恢复。
 
 ### 查看
 

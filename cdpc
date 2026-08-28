@@ -503,7 +503,7 @@ write_audit() {
 }
 
 case $1 in
-    start|stop|restart|pause|resume|remove|safe-remove|disable|enable|reload|load|config|auth|service-start|service-stop|service-restart)
+    start|stop|restart|pause|resume|remove|safe-remove|disable|enable|reload|reload-force|load|config|auth|service-start|service-stop|service-restart)
         write_audit "$@"
         ;;
 esac
@@ -537,6 +537,24 @@ case $1 in
     reload)
         CFG_REPORT_BEFORE=`report_mtime`
         node $CDPC_INS_DIR/sockop.js reload && wait_config_report "$CFG_REPORT_BEFORE"
+        ;;
+
+    # 强制重载：停止服务并按配置文件重建它。
+    # reload 只按 command/args 指纹判断变化，env/options/cgroup 这类只在
+    # spawn 时被读的字段改了之后 reload 与 restart 都不会生效（见 helpdoc）。
+    reload-force)
+        check_args2_exit $# 2
+
+        # 必须显式点名。--all 等同于逐个重启全部服务，与一次手滑的代价
+        # 完全不成比例，因此在展开成服务列表之前就挡掉。
+        for _a in $ARGS ; do
+            if [ "$_a" = "--all" ] ; then
+                echo "reload-force 必须显式指定服务名，不支持 --all。"
+                exit 1
+            fi
+        done
+
+        handle_app reloadForce $ARGS
         ;;
 
     remove)
@@ -875,6 +893,7 @@ case $1 in
         echo "  cdpc pause  [应用名称] 暂停应用"
         echo "  cdpc resume  [应用名称] 恢复暂停的应用"
         echo "  cdpc restart [应用名称] 重启应用"
+        echo "  cdpc reload-force [应用名称...] 强制重载：停止后按配置文件重建（改了 env 等只在启动时读取的字段时用它）"
         echo "  cdpc log [应用名称] 查看应用日志（-f 持续跟踪，--clear 清理日志，--clear-all 清理全部含cdpcd日志）"
         echo "  cdpc auth 查看自己是否被授权/查看授权信息"
         echo "  cdpc service-start 启动cdpcd服务"
