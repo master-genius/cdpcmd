@@ -164,16 +164,17 @@ handle_config () {
             rm "$CDPC_CONFIG/$2"
             ;;
         list)
-            CFGLIST=`ls $CDPC_CONFIG`
-            for c in $CFGLIST ; do
-                echo $c
+            # 只列普通文件：配置目录里还有 disabled/ 标记目录，它不是配置
+            for c in "$CDPC_CONFIG"/* ; do
+                [ -f "$c" ] || continue
+                echo "${c##*/}"
             done
             ;;
         show)
-            CFGLIST=`ls $CDPC_CONFIG`
-            for c in $CFGLIST ; do
-                echo "$CDPC_CONFIG/$c:"
-                cat -n "$CDPC_CONFIG/$c"
+            for c in "$CDPC_CONFIG"/* ; do
+                [ -f "$c" ] || continue
+                echo "$c:"
+                cat -n "$c"
                 echo "    "
             done
             ;;
