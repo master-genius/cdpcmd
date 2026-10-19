@@ -109,8 +109,10 @@ cdpc [控制选项] [应用名称]
 config支持子命令：
 
 .sp
-config add FILE 添加配置文件。配置文件名（去掉扩展名后）即服务名，
-必须以字母数字下划线开头、仅含字母数字下划线减号及 @、长度不超过50，否则会被拒绝。
+config add FILE 添加配置文件。服务名取配置里的 name；未写 name 时用配置文件名
+（去掉扩展名后）。无论哪种，名字都必须以字母数字下划线开头、仅含字母数字下划线
+减号及 @、长度不超过50，否则会被拒绝。只加载 .js 与 .json 配置。
+配置文件的写法与字段说明见仓库 docs/config-guide.md。
 
 .sp
 config remove NAME 移除配置文件。
@@ -119,7 +121,12 @@ config remove NAME 移除配置文件。
 config show 显示所有配置文件内容。
 
 .sp
-config list 列出配置文件名。
+config list 列出配置文件名。show 与 list 只处理配置目录里的普通文件，
+不包含 disabled 标记目录。
+
+.sp
+手写的配置文件直接放进配置目录不会自动加载，需要再执行 load（加载整个目录）
+或 reload。手写文件没有 config add 的语法预检，错误以加载报告里的 READ_ERROR 给出。
 
 .sp
 config errors 显示最近一次配置加载报告（哪些加载成功、哪些被跳过及原因）。

@@ -338,7 +338,7 @@ root 用 `sudo cdpc ...` 管理系统级服务；被授权的普通用户直接 
 
 | 命令 | 说明 |
 |------|------|
-| `cdpc config add <文件>` | 添加配置文件（文件名去扩展名即服务名，须合法） |
+| `cdpc config add <文件>` | 添加配置文件（服务名取配置里的 `name`，未写则用文件名去扩展名；文件名须合法） |
 | `cdpc config remove <name>` | 移除配置文件 |
 | `cdpc config show` / `list` | 查看配置内容 / 列出配置名 |
 | `cdpc config errors` | 查看最近一次配置加载报告 |
@@ -391,6 +391,10 @@ module.exports = {
   env: { NODE_ENV: 'production' }
 }
 ```
+
+**怎么写配置、每个字段什么含义、写错了会怎样，见 [配置编写指南](docs/config-guide.md)**，
+含：加载方式（`config add` 与手写文件）、服务名规则、常见服务的完整示例（Node / 脚本 / 一次性任务 /
+重启策略 / 依赖 / cluster / 指定用户）、字段速查、`reload` 与 `reload-force` 的区别，以及排错对照表。
 
 ---
 
