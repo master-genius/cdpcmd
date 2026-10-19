@@ -132,8 +132,9 @@ config list 列出配置文件名。show 与 list 只处理配置目录里的普
 config errors 显示最近一次配置加载报告（哪些加载成功、哪些被跳过及原因）。
 
 .sp
-config add 在复制进配置目录之前会先做语法检查（.js/.cjs/.mjs 走 node --check，
+config add 在复制进配置目录之前会先做语法检查（.js 走 node --check，
 .json 走 JSON.parse），语法有错当场报错并中止，不会把坏文件留在配置目录里。
+.cjs 与 .mjs 会在检查之前被直接拒绝：cdpcd 只加载 .js 与 .json。
 复制成功后会等待并回显 cdpcd 的配置加载报告，配置被拒当场可见；
 load 与 reload 同样会回显这份报告。
 
